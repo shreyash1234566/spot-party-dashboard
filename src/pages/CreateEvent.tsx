@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -28,7 +27,7 @@ const CreateEvent = () => {
     partnerUrl: '',
     partnerDescription: '',
     partnerLocation: '',
-    whatsIncluded: '',
+    whatsIncluded: [''], // Change from string to array of strings
     tags: [] as string[]
   });
 
@@ -55,6 +54,28 @@ const CreateEvent = () => {
     setFormData(prev => ({ ...prev, tags: prev.tags.filter(tag => tag !== tagToRemove) }));
   };
 
+  // Handler for changing a single included item
+  const handleIncludedChange = (idx: number, value: string) => {
+    setFormData(prev => {
+      const updated = [...prev.whatsIncluded];
+      updated[idx] = value;
+      return { ...prev, whatsIncluded: updated };
+    });
+  };
+
+  // Handler to add a new included item
+  const addIncludedItem = () => {
+    setFormData(prev => ({ ...prev, whatsIncluded: [...prev.whatsIncluded, ''] }));
+  };
+
+  // Handler to remove an included item
+  const removeIncludedItem = (idx: number) => {
+    setFormData(prev => {
+      const updated = prev.whatsIncluded.filter((_, i) => i !== idx);
+      return { ...prev, whatsIncluded: updated.length ? updated : [''] };
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Event data:', formData);
@@ -62,6 +83,77 @@ const CreateEvent = () => {
       title: "Event Created Successfully!",
       description: "Your event has been saved and is ready for review.",
     });
+  };
+
+  // Entry Requirement Types
+  interface EntryRequirementString {
+    type: 'string';
+    title: string;
+    description: string;
+  }
+  interface EntryRequirementArray {
+    type: 'array';
+    title: string;
+    items: string[];
+  }
+  type EntryRequirement = EntryRequirementString | EntryRequirementArray;
+
+  // Add to your useState at the top:
+  const [entryRequirements, setEntryRequirements] = useState<EntryRequirement[]>([
+    { type: 'string', title: '', description: '' }
+  ]);
+  const [entryType, setEntryType] = useState<'string' | 'array'>('string');
+
+  // Handlers for Entry Requirements
+  const handleEntryTypeChange = (type: 'string' | 'array') => setEntryType(type);
+
+  const handleEntryChange = (idx: number, field: string, value: string) => {
+    setEntryRequirements(prev => prev.map((req, i) => {
+      if (i !== idx) return req;
+      if (req.type === 'string') {
+        return { ...req, [field]: value };
+      } else {
+        if (field === 'title') return { ...req, title: value };
+        return req;
+      }
+    }));
+  };
+
+  const handleEntryArrayItemChange = (idx: number, itemIdx: number, value: string) => {
+    setEntryRequirements(prev => prev.map((req, i) => {
+      if (i !== idx || req.type !== 'array') return req;
+      const items = [...req.items];
+      items[itemIdx] = value;
+      return { ...req, items };
+    }));
+  };
+
+  const addEntryRequirement = () => {
+    setEntryRequirements(prev => [
+      ...prev,
+      entryType === 'string'
+        ? { type: 'string', title: '', description: '' }
+        : { type: 'array', title: '', items: [''] }
+    ]);
+  };
+
+  const addEntryArrayItem = (idx: number) => {
+    setEntryRequirements(prev => prev.map((req, i) => {
+      if (i !== idx || req.type !== 'array') return req;
+      return { ...req, items: [...req.items, ''] };
+    }));
+  };
+
+  const removeEntryRequirement = (idx: number) => {
+    setEntryRequirements(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const removeEntryArrayItem = (idx: number, itemIdx: number) => {
+    setEntryRequirements(prev => prev.map((req, i) => {
+      if (i !== idx || req.type !== 'array') return req;
+      const items = req.items.filter((_, j) => j !== itemIdx);
+      return { ...req, items: items.length ? items : [''] };
+    }));
   };
 
   return (
@@ -335,16 +427,128 @@ const CreateEvent = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <Label htmlFor="whatsIncluded">Include Details</Label>
-                <Textarea
-                  id="whatsIncluded"
-                  value={formData.whatsIncluded}
-                  onChange={(e) => handleInputChange('whatsIncluded', e.target.value)}
-                  placeholder="• Welcome drink&#10;• Access to all areas&#10;• Complimentary snacks&#10;• Photo booth access"
-                  className="min-h-32"
-                />
-                <p className="text-sm text-gray-500">You can use HTML formatting or markdown-style lists</p>
+                <Label>Include Details</Label>
+                <div className="space-y-3">
+                  {formData.whatsIncluded.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600">
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                      </span>
+                      <Input
+                        value={item}
+                        onChange={e => handleIncludedChange(idx, e.target.value)}
+                        placeholder="e.g. VIP entrance"
+                        className="flex-1 h-11"
+                      />
+                      {formData.whatsIncluded.length > 1 && (
+                        <button type="button" onClick={() => removeIncludedItem(idx)} className="text-gray-400 hover:text-red-500">
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button type="button" onClick={addIncludedItem} className="flex items-center gap-1 text-emerald-600 hover:text-emerald-800 font-medium mt-1">
+                    <Plus className="w-4 h-4" /> Add another
+                  </button>
+                </div>
+                <p className="text-sm text-gray-500">Add each included item as a separate point</p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Entry Requirements */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Entry Requirements</CardTitle>
+              <CardDescription>Specify entry requirements for your event</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-4 flex gap-4">
+                <Label>Type:</Label>
+                <Button
+                  type="button"
+                  variant={entryType === 'string' ? 'default' : 'outline'}
+                  onClick={() => handleEntryTypeChange('string')}
+                >
+                  Single Description
+                </Button>
+                <Button
+                  type="button"
+                  variant={entryType === 'array' ? 'default' : 'outline'}
+                  onClick={() => handleEntryTypeChange('array')}
+                >
+                  List
+                </Button>
+              </div>
+              {entryRequirements.map((req, idx) => (
+                <div key={idx} className="mb-6 border-b pb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Input
+                      value={req.title}
+                      onChange={e => handleEntryChange(idx, 'title', e.target.value)}
+                      placeholder="Section Title (e.g. Costume Code, Party Rules)"
+                      className="flex-1"
+                    />
+                    {entryRequirements.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeEntryRequirement(idx)}
+                        className="text-gray-400 hover:text-red-500"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                  {req.type === 'string' ? (
+                    <Textarea
+                      value={req.description}
+                      onChange={e => handleEntryChange(idx, 'description', e.target.value)}
+                      placeholder="Description"
+                      className="mb-2"
+                    />
+                  ) : (
+                    <div className="space-y-2">
+                      {req.items.map((item, itemIdx) => (
+                        <div key={itemIdx} className="flex items-center gap-2">
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-200 text-gray-700">
+                            <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/><text x="12" y="16" textAnchor="middle" fontSize="14" fill="currentColor" fontFamily="Arial" fontWeight="bold">i</text></svg>
+                          </span>
+                          <Input
+                            value={item}
+                            onChange={e => handleEntryArrayItemChange(idx, itemIdx, e.target.value)}
+                            placeholder="Rule or requirement"
+                            className="flex-1"
+                          />
+                          {req.items.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeEntryArrayItem(idx, itemIdx)}
+                              className="text-gray-400 hover:text-red-500"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => addEntryArrayItem(idx)}
+                        className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium mt-1"
+                      >
+                        <Plus className="w-4 h-4" /> Add Rule
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+              <Button
+                type="button"
+                onClick={addEntryRequirement}
+                className="mt-2"
+                variant="outline"
+              >
+                <Plus className="w-4 h-4 mr-1" /> Add Entry Requirement
+              </Button>
             </CardContent>
           </Card>
 
@@ -352,7 +556,7 @@ const CreateEvent = () => {
             <Button type="button" variant="outline" className="px-8">
               Save as Draft
             </Button>
-            <Button type="submit" className="px-8 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700">
+            <Button type="submit" className="px-8 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white">
               Create Event
             </Button>
           </div>
