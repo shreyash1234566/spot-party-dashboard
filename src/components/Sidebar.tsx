@@ -1,6 +1,19 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Users, Calendar, Plus, List, CreditCard, LayoutDashboard, LogOut, ChevronDown, ChevronRight } from 'lucide-react';
+import { 
+  Users, 
+  Calendar, 
+  Plus, 
+  List, 
+  CreditCard, 
+  LayoutDashboard, 
+  LogOut, 
+  ChevronDown, 
+  ChevronRight, 
+  BookOpen, 
+  Building2, 
+  Store 
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 
@@ -17,6 +30,9 @@ const menuItems = [
     ],
   },
   { icon: CreditCard, label: 'Subscription', path: '/subscription' },
+  { icon: BookOpen, label: 'Bookings', path: '/bookings' },
+  { icon: Store, label: 'Vendors', path: '/vendors' },
+  { icon: Building2, label: 'Venues', path: '/venues' },
 ];
 
 const Sidebar = () => {
@@ -30,7 +46,6 @@ const Sidebar = () => {
   };
 
   const isActive = (path: string) => {
-    // Make sure to not highlight parent if a sub-item is active for other menus
     if (location.pathname.startsWith(path) && path !== '/dashboard' && path !== '/users' && path !== '/subscription') {
       return true;
     }
@@ -38,14 +53,11 @@ const Sidebar = () => {
   };
 
   const isSubmenuActive = (path: string) => {
-      return location.pathname === path;
-  }
+    return location.pathname === path;
+  };
 
   return (
-    // FIX 1: The main container is now a flex column. `flex-shrink-0` is important for the main layout.
     <aside className={`bg-white border-r border-gray-200 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'} flex flex-col flex-shrink-0`}>
-
-      {/* Header section (remains at the top) */}
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-center">
           {!isCollapsed && (
@@ -62,13 +74,11 @@ const Sidebar = () => {
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="text-gray-600 hover:text-gray-800"
           >
-            {/* Swapped icons for better UX */}
             {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </Button>
         </div>
       </div>
 
-      {/* FIX 2: Navigation area now grows to fill available space and scrolls if needed */}
       <nav className="mt-4 px-3 flex-1 overflow-y-auto">
         {menuItems.map((item) => (
           <div key={item.label} className="mb-1">
@@ -130,7 +140,6 @@ const Sidebar = () => {
         ))}
       </nav>
 
-      {/* FIX 3: Footer is now part of the flex flow, pushed to the bottom. No `absolute` needed. */}
       <div className="p-3 border-t border-gray-200">
         {!isCollapsed && (
           <div className="mb-2 p-2 bg-gray-100 rounded-lg">
