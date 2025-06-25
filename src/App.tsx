@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,6 +13,8 @@ import Users from "./pages/Users";
 import Subscription from "./pages/Subscription";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
+import EventView from "./pages/EventView";
+import EventEdit from "./pages/EventEdit";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,16 @@ const App = () => (
             <Route path="/subscription" element={
               <ProtectedRoute>
                 <Subscription />
+              </ProtectedRoute>
+            } />
+            <Route path="/events/view/:id" element={
+              <ProtectedRoute>
+                <EventView />
+              </ProtectedRoute>
+            } />
+            <Route path="/events/edit/:id" element={
+              <ProtectedRoute>
+                <EventEdit />
               </ProtectedRoute>
             } />
             <Route path="*" element={<NotFound />} />

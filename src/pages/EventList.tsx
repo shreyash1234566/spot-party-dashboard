@@ -5,12 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Search, Edit, Trash2, Eye, Plus, Calendar, MapPin, DollarSign } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import EventView from './EventView';
+import EventEdit from './EventEdit';
 
 const EventList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setLoading(true);
@@ -22,18 +25,22 @@ const EventList = () => {
         return res.json();
       })
       .then(data => {
-        // Only keep the submitted event fields
+        // Only keep the submitted event fields and include _id for navigation
         const events = (Array.isArray(data) ? data : data.data || []).map((event: any) => ({
+          _id: event._id, // <-- use this for navigation and keys
           name: event.name, // { id, name }
           startDate: event.startDate,
           numberOfGuests: event.numberOfGuests,
           title: event.title,
           price: event.price,
+          currency: event.currency,
           location: event.location,
           tags: event.tags || [],
           whatsIncluded: event.whatsIncluded || [],
           hostedBy: event.hostedBy,
-          partneredBy: event.partneredBy
+          partneredBy: event.partneredBy,
+          status: event.status,
+          description: event.description || ''
         }));
         setEvents(events);
       })
@@ -42,9 +49,10 @@ const EventList = () => {
   }, []);
 
   const filteredEvents = events.filter(event =>
+    (event.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     event.name?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (event.location || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (event.tags || []).some((tag: string) => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+    (event.tags || []).some((tag: string) => tag.toLowerCase().includes(searchTerm.toLowerCase())))
   );
 
   const getStatusColor = (status: string) => {
@@ -95,10 +103,14 @@ const EventList = () => {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredEvents.map((event) => (
-              <Card key={event.id} className="hover:shadow-lg transition-shadow duration-200">
+              <Card key={event._id} className="hover:shadow-lg transition-shadow duration-200">
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start mb-2">
-                    <CardTitle className="text-lg leading-tight">{event.name?.name}</CardTitle>
+                    <div>
+                      <CardTitle className="text-lg leading-tight">{event.title}</CardTitle>
+                      <div className="text-xs text-gray-500 mt-1">Type: {event.name?.name}</div>
+                      <div className="text-xs text-gray-400">ID: {event._id}</div>
+                    </div>
                     <Badge className={`${getStatusColor(event.status)} text-xs`}>
                       {event.status}
                     </Badge>
@@ -143,15 +155,52 @@ const EventList = () => {
                     </div>
                     
                     <div className="flex space-x-2">
-                      <Button size="sm" variant="outline" className="flex-1">
+                      <Button size="sm" variant="outline" className="flex-1" onClick={() => navigate(`/events/view/${event._id}`)}>
                         <Eye className="w-3 h-3 mr-1" />
                         View
                       </Button>
-                      <Button size="sm" variant="outline" className="flex-1">
+                      <Button size="sm" variant="outline" className="flex-1" onClick={() => navigate(`/events/edit/${event._id}`)}>
                         <Edit className="w-3 h-3 mr-1" />
                         Edit
                       </Button>
-                      <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                      <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={async () => {
+                          if (window.confirm('Are you sure you want to delete this event?')) {
+                            // Find the event in the current events array (in case _id is not the backend's real id)
+                            const foundEvent = events.find(e => e._id === event._id);
+                            if (!foundEvent) {
+                              alert('Event not found in local list.');
+                              return;
+                            }
+                            // Try all possible endpoints for DELETE
+                            const endpoints = [
+                              `http://44.203.188.5:3000/api/admin/events/${foundEvent._id}`,
+                              `http://44.203.188.5:3000/api/admin/event/${foundEvent._id}`,
+                              `http://44.203.188.5:3000/api/events/${foundEvent._id}`,
+                              `http://44.203.188.5:3000/api/event/${foundEvent._id}`,
+                              `http://44.203.188.5:3000/events/${foundEvent._id}`,
+                              `http://44.203.188.5:3000/event/${foundEvent._id}`
+                            ];
+                            let deleted = false;
+                            for (const endpoint of endpoints) {
+                              try {
+                                const res = await fetch(endpoint, {
+                                  method: 'DELETE',
+                                  headers: { 'accept': '*/*' }
+                                });
+                                if (res.ok) {
+                                  setEvents((prev) => prev.filter((e) => e._id !== foundEvent._id));
+                                  deleted = true;
+                                  break;
+                                }
+                              } catch {}
+                            }
+                            if (!deleted) {
+                              alert('Failed to delete event. No endpoint accepted the delete.');
+                            }
+                          }
+                        }}
+                      >
                         <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>
