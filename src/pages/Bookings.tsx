@@ -16,16 +16,19 @@ const Bookings = () => {
   const [bookings, setBookings] = useState<BookingType[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setLoading(true);
-    fetch('http://44.203.188.5:3000/api/users/my-bookings', {
-      headers: { accept: '*/*' }
-    })
-      .then(res => res.json())
-      .then(data => setBookings(Array.isArray(data) ? data : data.data || []))
-      .catch(() => setBookings([]))
-      .finally(() => setLoading(false));
-  }, []);
+useEffect(() => {
+  setLoading(true);
+  fetch('http://44.203.188.5:3000/api/users/my-bookings', {
+    headers: {
+      accept: '*/*',
+      Authorization: `Bearer  eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ODRiZjJjMTg2MGUzNWQzZjgzZDA1NTIiLCJwaG9uZSI6OTc4MjQxOTE3MywiaWF0IjoxNzUwNzY0NTE0LCJleHAiOjE3NTEzNjkzMTR9.Lj8fcyCoSlQGn9NQ3Y2EP9aE3cEznDGsxJRJgmwsLjA` // <-- Replace with your real token
+    }
+  })
+    .then(res => res.json())
+    .then(data => setBookings(Array.isArray(data.data) ? data.data : []))
+    .catch(() => setBookings([]))
+    .finally(() => setLoading(false));
+}, []);
 
   return (
     <DashboardLayout>

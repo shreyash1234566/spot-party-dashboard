@@ -15,6 +15,13 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import EventView from "./pages/EventView";
 import EventEdit from "./pages/EventEdit";
+import Bookings from "./pages/Bookings";
+import Vendors from "./pages/Vendors";
+import Venues from "./pages/Venues";
+import MetadataEventType from './pages/MetadataEventType';
+import MetadataSubType from './pages/MetadataSubType';
+import MetadataFoodPref from './pages/MetadataFoodPref';
+import MetadataVenueType from './pages/MetadataVenueType';
 
 const queryClient = new QueryClient();
 
@@ -61,6 +68,41 @@ const App = () => (
             <Route path="/events/edit/:id" element={
               <ProtectedRoute>
                 <EventEdit />
+              </ProtectedRoute>
+            } />
+            <Route path="/bookings" element={
+              <ProtectedRoute>
+                <Bookings />
+              </ProtectedRoute>
+            } />
+            <Route path="/vendors" element={
+              <ProtectedRoute>
+                <Vendors />
+              </ProtectedRoute>
+            } />
+            <Route path="/venues" element={
+              <ProtectedRoute>
+                <Venues />
+              </ProtectedRoute>
+            } />
+            <Route path="/metadata/event-type" element={
+              <ProtectedRoute>
+                <MetadataEventType />
+              </ProtectedRoute>
+            } />
+            <Route path="/metadata/sub-type" element={
+              <ProtectedRoute>
+                <MetadataSubType />
+              </ProtectedRoute>
+            } />
+            <Route path="/metadata/food-pref" element={
+              <ProtectedRoute>
+                <MetadataFoodPref />
+              </ProtectedRoute>
+            } />
+            <Route path="/metadata/venue-type" element={
+              <ProtectedRoute>
+                <MetadataVenueType />
               </ProtectedRoute>
             } />
             <Route path="*" element={<NotFound />} />

@@ -193,7 +193,9 @@ const EventList = () => {
                                   deleted = true;
                                   break;
                                 }
-                              } catch {}
+                              } catch {
+                                // Ignore error and try next endpoint
+                              }
                             }
                             if (!deleted) {
                               alert('Failed to delete event. No endpoint accepted the delete.');

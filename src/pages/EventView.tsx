@@ -12,41 +12,35 @@ const EventView = () => {
   const [allEvents, setAllEvents] = useState([]);
 
   useEffect(() => {
-    console.log('EventView - ID from params:', id);
-    
     if (!id) {
       setError('No event ID provided');
       setLoading(false);
       return;
     }
 
-    // First, let's fetch all events to see the structure and find our event
-    fetch('http://44.203.188.5:3000/api/admin/events', {
-      headers: { 'accept': '*/*' }
-    })
-      .then(res => res.json())
-      .then(data => {
+    const fetchAllEvents = async () => {
+      try {
+        const res = await fetch('http://44.203.188.5:3000/api/admin/events', {
+          headers: { accept: '*/*' }
+        });
+        const data = await res.json();
         const events = Array.isArray(data) ? data : data.data || [];
         setAllEvents(events);
-        console.log('All events:', events);
-        
-        // Find the event with matching _id
-        const foundEvent = events.find(event => event._id === id);
-        console.log('Found event by _id:', foundEvent);
-        
+
+        const foundEvent = events.find(evt => evt._id === id);
         if (foundEvent) {
           setEvent(foundEvent);
           setLoading(false);
           return;
         }
-        
-        // If not found, try different API endpoints
-        tryDifferentEndpoints();
-      })
-      .catch(err => {
-        console.error('Error fetching all events:', err);
-        tryDifferentEndpoints();
-      });
+
+        // If not found, try other endpoints
+        await tryDifferentEndpoints();
+      } catch (err) {
+        console.error('Error fetching events:', err);
+        await tryDifferentEndpoints();
+      }
+    };
 
     const tryDifferentEndpoints = async () => {
       const endpoints = [
@@ -59,24 +53,18 @@ const EventView = () => {
       ];
 
       for (const endpoint of endpoints) {
-        console.log(`Trying endpoint: ${endpoint}`);
         try {
-          const response = await fetch(endpoint, {
-            headers: { 'accept': '*/*' }
+          const res = await fetch(endpoint, {
+            headers: { accept: '*/*' }
           });
-          
-          console.log(`${endpoint} - Status: ${response.status}`);
-          
-          if (response.ok) {
-            const data = await response.json();
-            console.log(`${endpoint} - Success! Data:`, data);
-            
-            // Handle different response formats
-            if (data && data._id) {
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data?._id) {
               setEvent(data);
               setLoading(false);
               return;
-            } else if (data && data.data && data.data._id) {
+            } else if (data?.data?._id) {
               setEvent(data.data);
               setLoading(false);
               return;
@@ -87,15 +75,22 @@ const EventView = () => {
             }
           }
         } catch (err) {
-          console.log(`${endpoint} - Error:`, err.message);
+          console.warn(`${endpoint} failed:`, err.message);
         }
       }
-      
-      // If all endpoints fail
+
       setError('Event not found in any endpoint');
       setLoading(false);
     };
+
+    fetchAllEvents();
   }, [id]);
+
+  useEffect(() => {
+    if (event && event.entryRequirements) {
+      console.log('Entry Requirements fetched:', event.entryRequirements);
+    }
+  }, [event]);
 
   if (loading) {
     return (
@@ -121,7 +116,7 @@ const EventView = () => {
               <div><strong>Error:</strong> {error}</div>
               <div><strong>Looking for ID:</strong> {id}</div>
               <div><strong>Total events found:</strong> {allEvents.length}</div>
-              
+
               {allEvents.length > 0 && (
                 <div className="mt-4">
                   <strong>Available Event IDs:</strong>
@@ -134,7 +129,7 @@ const EventView = () => {
                   </div>
                 </div>
               )}
-              
+
               <div className="mt-4">
                 <strong>Endpoints tested:</strong>
                 <ul className="text-xs text-gray-600 ml-4 list-disc">
@@ -147,12 +142,7 @@ const EventView = () => {
                 </ul>
               </div>
             </div>
-            
-            <Button 
-              variant="outline" 
-              className="mt-4" 
-              onClick={() => navigate(-1)}
-            >
+            <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>
               Back to List
             </Button>
           </CardContent>
@@ -173,19 +163,56 @@ const EventView = () => {
         <CardContent className="space-y-4">
           <div><strong>Date:</strong> {event.startDate ? new Date(event.startDate).toLocaleString() : '-'}</div>
           <div><strong>Location:</strong> {event.location || '-'}</div>
-          <div><strong>Price:</strong> {event.price !== undefined ? event.price : '-'}</div>
-          <div><strong>Number of Guests:</strong> {event.numberOfGuests !== undefined ? event.numberOfGuests : '-'}</div>
-          <div><strong>Tags:</strong> {event.tags && event.tags.length > 0 ? 
+          <div><strong>Price:</strong> {event.price ?? '-'}</div>
+          <div><strong>Number of Guests:</strong> {event.numberOfGuests ?? '-'}</div>
+          <div><strong>Tags:</strong> {Array.isArray(event.tags) && event.tags.length > 0 ?
             event.tags.map((tag, i) => (
               <span key={i} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1">
                 {tag}
               </span>
             )) : '-'}</div>
-          <div><strong>What's Included:</strong> {event.whatsIncluded && event.whatsIncluded.length > 0 ? 
+          <div><strong>What's Included:</strong> {Array.isArray(event.whatsIncluded) && event.whatsIncluded.length > 0 ?
             <ul className="list-disc ml-6">{event.whatsIncluded.map((item, i) => <li key={i}>{item}</li>)}</ul> : '-'}</div>
-          <div><strong>Hosted By:</strong> {event.hostedBy?.name ? `${event.hostedBy.name} (${event.hostedBy.location || '-'})` : '-'}</div>
-          <div><strong>Partnered By:</strong> {event.partneredBy?.name ? `${event.partneredBy.name} (${event.partneredBy.location || '-'})` : '-'}</div>
-          <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>Back</Button>
+
+          <div><strong>Hosted By:</strong> {event.hostedBy?.name ? `${event.hostedBy.name} (${event.hostedBy.location || '-'})` : '-'}
+            {event.hostedBy?.image && (
+              <div className="mt-2">
+                <img src={event.hostedBy.image} alt="Host" className="w-32 h-32 object-cover rounded shadow" />
+              </div>
+            )}
+          </div>
+
+          <div><strong>Partnered By:</strong> {event.partneredBy?.name ? `${event.partneredBy.name} (${event.partneredBy.location || '-'})` : '-'}
+            {event.partneredBy?.image && (
+              <div className="mt-2">
+                <img src={event.partneredBy.image} alt="Partner" className="w-32 h-32 object-cover rounded shadow" />
+              </div>
+            )}
+          </div>
+
+          <div>
+            <strong>Entry Requirements:</strong>
+            {Array.isArray(event.entryRequirements) && event.entryRequirements.length > 0 ? (
+              <ul className="list-disc ml-6">
+                {event.entryRequirements.map((req, i) => (
+                  <li key={i}>
+                    <span className="font-semibold">{req.title}:</span>
+                    {Array.isArray(req.data) && req.data.length > 0 ? (
+                      <ul className="list-disc ml-6 mt-1">
+                        {req.data.map((item, idx) => (
+                          <li key={idx}>{item}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <span className="ml-2 text-gray-600">No details</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              '-'
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

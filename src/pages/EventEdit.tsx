@@ -17,8 +17,8 @@ interface EventType {
   numberOfGuests?: number;
   tags?: string[];
   whatsIncluded?: string[];
-  hostedBy?: { name?: string };
-  partneredBy?: { name?: string };
+  hostedBy?: { name?: string, image?: string };
+  partneredBy?: { name?: string, image?: string };
   [key: string]: unknown;
 }
 
@@ -142,6 +142,30 @@ const EventEdit = () => {
     }
   };
 
+  // --- Image Upload Helper ---
+  /**
+   * Uploads an image file to the backend and returns the image URL.
+   * @param file - The image file to upload.
+   * @returns The URL of the uploaded image, or an empty string if upload fails.
+   */
+  const uploadImageAndGetUrl = async (file: File | null): Promise<string> => {
+    if (!file) return '';
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const response = await fetch('http://44.203.188.5:3000/api/admin/file-upload', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!response.ok) throw new Error('Image upload failed');
+      const data = await response.json();
+      return data.url || '';
+    } catch (err) {
+      console.error('Image upload error:', err);
+      return '';
+    }
+  };
+
   if (loading) return <DashboardLayout><div className="p-8">Loading...</div></DashboardLayout>;
   if (error) return <DashboardLayout><div className="p-8 text-red-600">{error}</div></DashboardLayout>;
   if (!event) return <DashboardLayout><div className="p-8">Event not found.</div></DashboardLayout>;
@@ -161,8 +185,36 @@ const EventEdit = () => {
             <div><strong>Number of Guests:</strong> <Input type="number" value={form?.numberOfGuests} onChange={e => handleChange('numberOfGuests', parseInt(e.target.value))} /></div>
             <div><strong>Tags:</strong> <Input value={form?.tags?.join(', ')} onChange={e => handleChange('tags', e.target.value.split(',').map((t:string)=>t.trim()))} /></div>
             <div><strong>What's Included:</strong> <Textarea value={form?.whatsIncluded?.join('\n')} onChange={e => handleChange('whatsIncluded', e.target.value.split('\n'))} /></div>
-            <div><strong>Hosted By:</strong> <Input value={form?.hostedBy?.name} onChange={e => handleChange('hostedBy', { ...form.hostedBy, name: e.target.value })} /></div>
-            <div><strong>Partnered By:</strong> <Input value={form?.partneredBy?.name} onChange={e => handleChange('partneredBy', { ...form.partneredBy, name: e.target.value })} /></div>
+            <div><strong>Hosted By:</strong>
+              <Input value={form?.hostedBy?.name} onChange={e => handleChange('hostedBy', { ...form.hostedBy, name: e.target.value })} />
+              {form?.hostedBy?.image && (
+                <div className="mt-2">
+                  <img src={form.hostedBy.image} alt="Host" className="w-32 h-32 object-cover rounded shadow" />
+                </div>
+              )}
+              <Input type="file" accept="image/*" className="mt-2" onChange={async e => {
+                const file = e.target.files?.[0] || null;
+                if (file) {
+                  const url = await uploadImageAndGetUrl(file);
+                  if (url) handleChange('hostedBy', { ...form.hostedBy, image: url });
+                }
+              }} />
+            </div>
+            <div><strong>Partnered By:</strong>
+              <Input value={form?.partneredBy?.name} onChange={e => handleChange('partneredBy', { ...form.partneredBy, name: e.target.value })} />
+              {form?.partneredBy?.image && (
+                <div className="mt-2">
+                  <img src={form.partneredBy.image} alt="Partner" className="w-32 h-32 object-cover rounded shadow" />
+                </div>
+              )}
+              <Input type="file" accept="image/*" className="mt-2" onChange={async e => {
+                const file = e.target.files?.[0] || null;
+                if (file) {
+                  const url = await uploadImageAndGetUrl(file);
+                  if (url) handleChange('partneredBy', { ...form.partneredBy, image: url });
+                }
+              }} />
+            </div>
             <div className="flex gap-2 mt-4">
               <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
               <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>

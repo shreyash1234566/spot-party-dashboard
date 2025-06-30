@@ -80,7 +80,7 @@ const Sidebar = () => {
       </div>
 
       <nav className="mt-4 px-3 flex-1 overflow-y-auto">
-        {menuItems.map((item) => (
+        {[...menuItems].map((item) => (
           <div key={item.label} className="mb-1">
             {item.submenu ? (
               <div>
@@ -138,6 +138,77 @@ const Sidebar = () => {
             )}
           </div>
         ))}
+        {/* Add a new menu section for Create Metadata */}
+        <div className="mb-1">
+          <div>
+            <button
+              onClick={() => handleMenuToggle('Create Metadata')}
+              className={`w-full flex items-center px-3 py-2.5 text-sm font-medium text-left rounded-lg transition-colors duration-200 ${
+                isCollapsed ? 'justify-center' : ''
+              } ${
+                isActive('/metadata')
+                  ? 'bg-indigo-50 text-indigo-700'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <Plus className={`w-5 h-5 flex-shrink-0 ${isCollapsed ? '' : 'mr-3'}`} />
+              {!isCollapsed && (
+                <>
+                  <span className="flex-1">Create Metadata</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expandedMenu === 'Create Metadata' ? 'rotate-180' : ''}`} />
+                </>
+              )}
+            </button>
+            {!isCollapsed && expandedMenu === 'Create Metadata' && (
+              <div className="ml-4 pl-4 border-l border-gray-200 mt-2 space-y-1">
+                <Link
+                  to="/metadata/event-type"
+                  className={`flex items-center px-3 py-2 text-sm rounded-lg transition-colors duration-200 ${
+                    isSubmenuActive('/metadata/event-type')
+                      ? 'bg-indigo-100 text-indigo-800 font-semibold'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
+                  }`}
+                >
+                  <Plus className="w-4 h-4 mr-3 flex-shrink-0" />
+                  Event Type
+                </Link>
+                <Link
+                  to="/metadata/sub-type"
+                  className={`flex items-center px-3 py-2 text-sm rounded-lg transition-colors duration-200 ${
+                    isSubmenuActive('/metadata/sub-type')
+                      ? 'bg-indigo-100 text-indigo-800 font-semibold'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
+                  }`}
+                >
+                  <Plus className="w-4 h-4 mr-3 flex-shrink-0" />
+                  Sub-Type
+                </Link>
+                <Link
+                  to="/metadata/food-pref"
+                  className={`flex items-center px-3 py-2 text-sm rounded-lg transition-colors duration-200 ${
+                    isSubmenuActive('/metadata/food-pref')
+                      ? 'bg-indigo-100 text-indigo-800 font-semibold'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
+                  }`}
+                >
+                  <Plus className="w-4 h-4 mr-3 flex-shrink-0" />
+                  Food Preference
+                </Link>
+                <Link
+                  to="/metadata/venue-type"
+                  className={`flex items-center px-3 py-2 text-sm rounded-lg transition-colors duration-200 ${
+                    isSubmenuActive('/metadata/venue-type')
+                      ? 'bg-indigo-100 text-indigo-800 font-semibold'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
+                  }`}
+                >
+                  <Plus className="w-4 h-4 mr-3 flex-shrink-0" />
+                  Venue Type
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
       </nav>
 
       <div className="p-3 border-t border-gray-200">

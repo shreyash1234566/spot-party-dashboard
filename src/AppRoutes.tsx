@@ -7,6 +7,7 @@ import Users from './pages/Users';
 import Bookings from './pages/Bookings';
 import Vendors from './pages/Vendors';
 import Venues from './pages/Venues';
+import NotFound from './pages/NotFound';
 
 const AppRoutes = () => (
   <Routes>
@@ -18,6 +19,7 @@ const AppRoutes = () => (
     <Route path="/bookings" element={<Bookings />} />
     <Route path="/vendors" element={<Vendors />} />
     <Route path="/venues" element={<Venues />} />
+    <Route path="*" element={<NotFound />} />
     {/* Add other routes as needed */}
   </Routes>
 );
