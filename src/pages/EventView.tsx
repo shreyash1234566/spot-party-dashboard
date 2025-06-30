@@ -20,7 +20,7 @@ const EventView = () => {
 
     const fetchAllEvents = async () => {
       try {
-        const res = await fetch('http://44.203.188.5:3000/api/admin/events', {
+        const res = await fetch('https://api.partywalah.in/api/admin/events', {
           headers: { accept: '*/*' }
         });
         const data = await res.json();
@@ -44,12 +44,12 @@ const EventView = () => {
 
     const tryDifferentEndpoints = async () => {
       const endpoints = [
-        `http://44.203.188.5:3000/api/admin/events/${id}`,
-        `http://44.203.188.5:3000/api/admin/event/${id}`,
-        `http://44.203.188.5:3000/api/events/${id}`,
-        `http://44.203.188.5:3000/api/event/${id}`,
-        `http://44.203.188.5:3000/events/${id}`,
-        `http://44.203.188.5:3000/event/${id}`
+        `https://api.partywalah.in/api/admin/events/${id}`,
+        `https://api.partywalah.in/api/admin/event/${id}`,
+        `https://api.partywalah.in/api/events/${id}`,
+        `https://api.partywalah.in/api/event/${id}`,
+        `https://api.partywalah.in/events/${id}`,
+        `https://api.partywalah.in/event/${id}`
       ];
 
       for (const endpoint of endpoints) {

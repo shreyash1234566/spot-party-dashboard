@@ -43,7 +43,7 @@ const EventEdit = () => {
       return;
     }
 
-    fetch('http://44.203.188.5:3000/api/admin/events', {
+    fetch('https://api.partywalah.in/api/admin/events', {
       headers: { 'accept': '*/*' }
     })
       .then(res => res.json())
@@ -65,12 +65,12 @@ const EventEdit = () => {
 
     const tryDifferentEndpoints = async () => {
       const endpoints = [
-        `http://44.203.188.5:3000/api/admin/events/${id}`,
-        `http://44.203.188.5:3000/api/admin/event/${id}`,
-        `http://44.203.188.5:3000/api/events/${id}`,
-        `http://44.203.188.5:3000/api/event/${id}`,
-        `http://44.203.188.5:3000/events/${id}`,
-        `http://44.203.188.5:3000/event/${id}`
+        `https://api.partywalah.in/api/admin/events/${id}`,
+        `https://api.partywalah.in/api/admin/event/${id}`,
+        `https://api.partywalah.in/api/events/${id}`,
+        `https://api.partywalah.in/api/event/${id}`,
+        `https://api.partywalah.in/events/${id}`,
+        `https://api.partywalah.in/event/${id}`
       ];
       for (const endpoint of endpoints) {
         try {
@@ -153,7 +153,7 @@ const EventEdit = () => {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const response = await fetch('http://44.203.188.5:3000/api/admin/file-upload', {
+      const response = await fetch('https://api.partywalah.in/api/admin/file-upload', {
         method: 'POST',
         body: formData,
       });

@@ -45,7 +45,9 @@ const CreateEvent = () => {
     venueTypeName: '',
     foodPreferences: '',
     foodPreferencesName: '',
-    specialRequirements: ''
+    specialRequirements: '',
+    eventImage: null,
+    eventImageUrl: '',
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -217,23 +219,27 @@ const CreateEvent = () => {
   };
 
   // Image upload
-  const uploadImageAndGetUrl = async (file: File | null): Promise<string> => {
-    if (!file) return '';
-    const formData = new FormData();
-    formData.append('file', file);
-    try {
-      const response = await fetch('http://44.203.188.5:3000/api/admin/file-upload', {
-        method: 'POST',
-        body: formData,
-      });
-      if (!response.ok) throw new Error('Image upload failed');
-      const data = await response.json();
-      return data.url || '';
-    } catch (err) {
-      console.error('Image upload error:', err);
-      return '';
+  const uploadImageAndGetUrl = async (file: File | null, label?: string): Promise<string> => {
+  if (!file) return '';
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const response = await fetch('https://api.partywalah.in/api/admin/file-upload', {
+      method: 'POST',
+      body: formData,
+    });
+    if (!response.ok) throw new Error('Image upload failed');
+    const data = await response.json();
+    const url = data?.data?.url || '';
+    if (label) {
+      console.log(`${label} uploaded URL:`, url);
     }
-  };
+    return url;
+  } catch (err) {
+    console.error('Image upload error:', err);
+    return '';
+  }
+};
 
   // Form submission
   const handleSubmit = async (e: React.FormEvent) => {
@@ -241,11 +247,17 @@ const CreateEvent = () => {
     setIsSubmitting(true);
 
     try {
-      const [hostImageUrl, partnerImageUrl] = await Promise.all([
-        uploadImageAndGetUrl(formData.hostImage),
-        uploadImageAndGetUrl(formData.partnerImage),
-      ]);
 
+      // Upload event image if present
+      let eventImageUrl = '';
+if (formData.eventImage) {
+  eventImageUrl = await uploadImageAndGetUrl(formData.eventImage, 'Event image'); // <-- add label here
+}
+
+      const [hostImageUrl, partnerImageUrl] = await Promise.all([
+  uploadImageAndGetUrl(formData.hostImage, 'Host image'),     // <-- add label here
+  uploadImageAndGetUrl(formData.partnerImage, 'Partner image')// <-- add label here
+]);
       const selectedEventType = meta?.eventType.find(type => type._id === formData.eventType);
       const selectedSubType = meta?.eventSubType.find(sub => sub._id === formData.eventSubType);
       const venueType = formData.venueType ? [{ id: formData.venueType, name: formData.venueTypeName || '' }] : [];
@@ -272,43 +284,46 @@ const CreateEvent = () => {
         }
       });
 
-      const apiData: any = {
-        name: {
-          id: formData.eventType,
-          name: selectedEventType?.name || '',
-        },
-        subType: selectedSubType ? [{ id: selectedSubType._id, name: selectedSubType.name }] : undefined,
-        startDate: formData.startDate && formData.time
-          ? new Date(`${formData.startDate}T${formData.time}`).toISOString()
-          : new Date(formData.startDate).toISOString(),
-        endDate: formData.startDate && formData.time
-          ? new Date(`${formData.startDate}T${formData.time}`).toISOString()
-          : new Date(formData.startDate).toISOString(),
-        numberOfGuests: formData.numberOfGuests ? parseInt(formData.numberOfGuests) : undefined,
-        venueType: venueType.length > 0 ? venueType : undefined,
-        foodPreferences: foodPreferences.length > 0 ? foodPreferences : undefined,
-        specialRequirements: formData.specialRequirements || undefined,
-        title: formData.name,
-        price: formData.price ? parseFloat(formData.price) : undefined,
-        location: formData.location || undefined,
-        tags: formData.tags.length ? formData.tags : undefined,
-        whatsIncluded: formData.whatsIncluded.filter(item => item.trim()),
-        hostedBy: formData.hostName ? {
-          image: hostImageUrl || undefined,
-          name: formData.hostName,
-          location: formData.hostLocation || undefined,
-          description: formData.hostDescription || undefined
-        } : undefined,
-        partneredBy: formData.partnerName ? {
-          image: partnerImageUrl || undefined,
-          name: formData.partnerName,
-          location: formData.partnerLocation || undefined,
-          description: formData.partnerDescription || undefined,
-          url: formData.partnerUrl || undefined,
-        } : undefined,
-        entryRequirements: entryReqPayload.length > 0 ? entryReqPayload : undefined,
-      };
-
+      // ...existing code...
+const apiData: any = {
+  name: {
+    id: formData.eventType,
+    name: selectedEventType?.name || '',
+  },
+  subType: selectedSubType ? [{ id: selectedSubType._id, name: selectedSubType.name }] : undefined,
+  startDate: formData.startDate && formData.time
+    ? new Date(`${formData.startDate}T${formData.time}`).toISOString()
+    : new Date(formData.startDate).toISOString(),
+  endDate: formData.startDate && formData.time
+    ? new Date(`${formData.startDate}T${formData.time}`).toISOString()
+    : new Date(formData.startDate).toISOString(),
+  numberOfGuests: formData.numberOfGuests ? parseInt(formData.numberOfGuests) : undefined,
+  venueType: venueType.length > 0 ? venueType : undefined,
+  foodPreferences: foodPreferences.length > 0 ? foodPreferences : undefined,
+  specialRequirements: formData.specialRequirements || undefined,
+  title: formData.name,
+  description: formData.description || undefined, // <-- Add this line to include event description
+  price: formData.price ? parseFloat(formData.price) : undefined,
+  location: formData.location || undefined,
+  tags: formData.tags.length ? formData.tags : undefined,
+  whatsIncluded: formData.whatsIncluded.filter(item => item.trim()),
+  hostedBy: formData.hostName ? {
+    image: hostImageUrl || undefined,
+    name: formData.hostName,
+    location: formData.hostLocation || undefined,
+    description: formData.hostDescription || undefined
+  } : undefined,
+  partneredBy: formData.partnerName ? {
+    image: partnerImageUrl || undefined,
+    name: formData.partnerName,
+    location: formData.partnerLocation || undefined,
+    description: formData.partnerDescription || undefined,
+    url: formData.partnerUrl || undefined,
+  } : undefined,
+  entryRequirements: entryReqPayload.length > 0 ? entryReqPayload : undefined,
+  eventImage: eventImageUrl || undefined,
+};
+// ...existing code...
       // Log all data that will be sent
       console.log('Event formData:', formData);
       console.log('Card Entry:', cardEntry);
@@ -316,7 +331,7 @@ const CreateEvent = () => {
       console.log('entryReqPayload:', entryReqPayload); // Log the actual array
       console.log('API Payload:', apiData);
 
-      const response = await fetch('http://44.203.188.5:3000/api/admin/events', {
+      const response = await fetch('https://api.partywalah.in/api/admin/events', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -350,7 +365,7 @@ const CreateEvent = () => {
 
   // Fetch metadata
   useEffect(() => {
-    fetch('http://44.203.188.5:3000/api/events/get-event-meta', {
+    fetch('https://api.partywalah.in/api/events/get-event-meta', {
       headers: {
         'accept': '*/*',
       }
@@ -359,7 +374,10 @@ const CreateEvent = () => {
         if (!res.ok) throw new Error('Network response was not ok');
         return res.json();
       })
-      .then((data) => setMeta(data as EventMeta))
+      .then((data) => {
+        console.log('Event type metadata:', data);
+        setMeta(data as EventMeta);
+      })
       .catch(err => console.error('Failed to fetch metadata:', err));
   }, []);
 
@@ -375,6 +393,40 @@ const CreateEvent = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Event Image Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Event Image</CardTitle>
+              <CardDescription>Upload a main image for your event</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Label htmlFor="eventImage">Event Image</Label>
+                <Input
+                  id="eventImage"
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0] || null;
+                    setFormData((prev) => ({ ...prev, eventImage: file }));
+                    if (file) {
+                      const url = await uploadImageAndGetUrl(file);
+                      setFormData((prev) => ({ ...prev, eventImageUrl: url }));
+                      console.log('Event image uploaded URL:', url);
+                    } else {
+                      setFormData((prev) => ({ ...prev, eventImageUrl: '' }));
+                    }
+                  }}
+                  className="h-11"
+                />
+                {formData.eventImageUrl && (
+                  <div className="mt-2">
+                    <img src={formData.eventImageUrl} alt="Event" className="w-48 h-32 object-cover rounded shadow" />
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
           {/* Event Type Section */}
           <Card>
             <CardHeader>
@@ -450,62 +502,113 @@ const CreateEvent = () => {
           {/* Basic Event Details Section */}
           <Card>
             <CardHeader>
-              <div className="flex items-center gap-2">
-                <input type="checkbox" checked={enabledSections.eventDetails} onChange={() => handleSectionToggle('eventDetails')} />
-                <CardTitle className="flex items-center space-x-2">
-                  <CalendarIcon className="w-5 h-5 text-indigo-600" />
-                  <span>Event Details</span>
-                </CardTitle>
-              </div>
-              <CardDescription>Basic information about your event</CardDescription>
-            </CardHeader>
-            {enabledSections.eventDetails && (
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Event Name *</Label>
-                    <Input id="name" value={formData.name} onChange={(e) => handleInputChange('name', e.target.value)} placeholder="Enter event name" className="h-11" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Location *</Label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                      <Input id="location" value={formData.location} onChange={(e) => handleInputChange('location', e.target.value)} placeholder="Event location" className="pl-10 h-11" required />
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description *</Label>
-                  <Textarea id="description" value={formData.description} onChange={(e) => handleInputChange('description', e.target.value)} placeholder="Describe your event in detail..." className="min-h-24" required />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Price *</Label>
-                    <div className="flex">
-                      <Select value={formData.currency} onValueChange={(value) => handleInputChange('currency', value)}>
-                        <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="₹">₹</SelectItem>
-                          <SelectItem value="$">$</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Input id="price" type="number" value={formData.price} onChange={(e) => handleInputChange('price', e.target.value)} placeholder="0" className="flex-1 ml-2 h-11" required />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="numberOfGuests">Number of Guests *</Label>
-                    <Input id="numberOfGuests" type="number" value={formData.numberOfGuests} onChange={(e) => handleInputChange('numberOfGuests', e.target.value)} placeholder="0" className="h-11" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="startDate">Date *</Label>
-                    <Input id="startDate" type="date" value={formData.startDate} onChange={(e) => handleInputChange('startDate', e.target.value)} className="h-11" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="time">Time *</Label>
-                    <Input id="time" type="time" value={formData.time} onChange={(e) => handleInputChange('time', e.target.value)} className="h-11" required />
-                  </div>
-                </div>
-              </CardContent>
+  <div className="flex items-center gap-2">
+    <input type="checkbox" checked={enabledSections.eventDetails} onChange={() => handleSectionToggle('eventDetails')} />
+    <CardTitle className="flex items-center space-x-2">
+      <CalendarIcon className="w-5 h-5 text-indigo-600" />
+      <span>Event Details</span>
+    </CardTitle>
+  </div>
+  <CardDescription>Basic information about your event</CardDescription>
+</CardHeader>
+{enabledSections.eventDetails && (
+  <CardContent className="space-y-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="space-y-2">
+        <Label htmlFor="name">Event Name *</Label>
+        <Input
+          id="name"
+          value={formData.name}
+          onChange={(e) => handleInputChange('name', e.target.value)}
+          placeholder="Enter event name"
+          className="h-11"
+          required
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="description">Event Description *</Label>
+        <Textarea
+          id="description"
+          value={formData.description}
+          onChange={(e) => handleInputChange('description', e.target.value)}
+          placeholder="Enter event description"
+          className="min-h-24"
+          required
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="location">Location *</Label>
+        <div className="relative">
+          <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+          <Input
+            id="location"
+            value={formData.location}
+            onChange={(e) => handleInputChange('location', e.target.value)}
+            placeholder="Event location"
+            className="pl-10 h-11"
+            required
+          />
+        </div>
+      </div>
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="space-y-2">
+        <Label htmlFor="price">Price *</Label>
+        <div className="flex">
+          <Select value={formData.currency} onValueChange={(value) => handleInputChange('currency', value)}>
+            <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="₹">₹</SelectItem>
+              <SelectItem value="$">$</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
+            id="price"
+            type="number"
+            value={formData.price}
+            onChange={(e) => handleInputChange('price', e.target.value)}
+            placeholder="0"
+            className="flex-1 ml-2 h-11"
+            required
+          />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="numberOfGuests">Number of Guests *</Label>
+        <Input
+          id="numberOfGuests"
+          type="number"
+          value={formData.numberOfGuests}
+          onChange={(e) => handleInputChange('numberOfGuests', e.target.value)}
+          placeholder="0"
+          className="h-11"
+          required
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="startDate">Date *</Label>
+        <Input
+          id="startDate"
+          type="date"
+          value={formData.startDate}
+          onChange={(e) => handleInputChange('startDate', e.target.value)}
+          className="h-11"
+          required
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="time">Time *</Label>
+        <Input
+          id="time"
+          type="time"
+          value={formData.time}
+          onChange={(e) => handleInputChange('time', e.target.value)}
+          className="h-11"
+          required
+        />
+      </div>
+    </div>
+  </CardContent>
             )}
           </Card>
 
@@ -595,13 +698,25 @@ const CreateEvent = () => {
                       <Input id="hostLocation" value={formData.hostLocation} onChange={(e) => handleInputChange('hostLocation', e.target.value)} placeholder="Host's location" className="h-11" />
                     </div>
                 </div>
-                <div className="space-y-2">
-                    <Label htmlFor="hostDescription">Host Description</Label>
-                    <Textarea id="hostDescription" value={formData.hostDescription} onChange={(e) => handleInputChange('hostDescription', e.target.value)} placeholder="Brief description about the host..." className="min-h-20" />
-                </div>
+                {/* Removed Host Description field */}
                 <div className="space-y-2">
                     <Label htmlFor="hostImage">Host Image</Label>
-                    <Input id="hostImage" type="file" accept="image/*" onChange={(e) => handleFileChange('hostImage', e.target.files?.[0] || null)} className="h-11" />
+                    <Input
+  id="eventImage"
+  type="file"
+  accept="image/*"
+  onChange={async (e) => {
+    const file = e.target.files?.[0] || null;
+    setFormData((prev) => ({ ...prev, eventImage: file }));
+    if (file) {
+      const url = await uploadImageAndGetUrl(file, 'Event image');
+      setFormData((prev) => ({ ...prev, eventImageUrl: url }));
+    } else {
+      setFormData((prev) => ({ ...prev, eventImageUrl: '' }));
+    }
+  }}
+  className="h-11"
+/>
                 </div>
               </CardContent>
             )}
@@ -628,18 +743,27 @@ const CreateEvent = () => {
                       <Input id="partnerLocation" value={formData.partnerLocation} onChange={(e) => handleInputChange('partnerLocation', e.target.value)} placeholder="Partner's location" className="h-11" />
                     </div>
                 </div>
-                <div className="space-y-2">
-                    <Label htmlFor="partnerDescription">Partner Description</Label>
-                    <Textarea id="partnerDescription" value={formData.partnerDescription} onChange={(e) => handleInputChange('partnerDescription', e.target.value)} placeholder="Brief description about the partner..." className="min-h-20" />
-                </div>
+                {/* Removed Partner Description field */}
                 <div className="space-y-2">
                     <Label htmlFor="partnerImage">Partner Image</Label>
-                    <Input id="partnerImage" type="file" accept="image/*" onChange={(e) => handleFileChange('partnerImage', e.target.files?.[0] || null)} className="h-11" />
+                    <Input
+  id="eventImage"
+  type="file"
+  accept="image/*"
+  onChange={async (e) => {
+    const file = e.target.files?.[0] || null;
+    setFormData((prev) => ({ ...prev, eventImage: file }));
+    if (file) {
+      const url = await uploadImageAndGetUrl(file, 'Event image');
+      setFormData((prev) => ({ ...prev, eventImageUrl: url }));
+    } else {
+      setFormData((prev) => ({ ...prev, eventImageUrl: '' }));
+    }
+  }}
+  className="h-11"
+/>
                 </div>
-                <div className="space-y-2">
-                    <Label htmlFor="partnerUrl">Partner URL</Label>
-                    <Input id="partnerUrl" value={formData.partnerUrl} onChange={(e) => handleInputChange('partnerUrl', e.target.value)} placeholder="Website or social media link" className="h-11" />
-                </div>
+                {/* Removed Partner URL field */}
               </CardContent>
             )}
           </Card>
@@ -856,7 +980,9 @@ const CreateEvent = () => {
                   venueTypeName: '',
                   foodPreferences: '',
                   foodPreferencesName: '',
-                  specialRequirements: ''
+                  specialRequirements: '',
+                  eventImage: null,
+                  eventImageUrl: ''
                 });
                 setCardEntry({ title: '', data: '' });
                 setEntryRequirements([]);

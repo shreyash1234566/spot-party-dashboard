@@ -17,7 +17,7 @@ const EventList = () => {
 
   useEffect(() => {
     setLoading(true);
-    fetch('http://44.203.188.5:3000/api/admin/events', {
+    fetch('https://api.partywalah.in/api/admin/events', {
       headers: { 'accept': '*/*' }
     })
       .then(res => {
@@ -174,12 +174,7 @@ const EventList = () => {
                             }
                             // Try all possible endpoints for DELETE
                             const endpoints = [
-                              `http://44.203.188.5:3000/api/admin/events/${foundEvent._id}`,
-                              `http://44.203.188.5:3000/api/admin/event/${foundEvent._id}`,
-                              `http://44.203.188.5:3000/api/events/${foundEvent._id}`,
-                              `http://44.203.188.5:3000/api/event/${foundEvent._id}`,
-                              `http://44.203.188.5:3000/events/${foundEvent._id}`,
-                              `http://44.203.188.5:3000/event/${foundEvent._id}`
+                              `https://api.partywalah.in/api/admin/event/${foundEvent._id}`,
                             ];
                             let deleted = false;
                             for (const endpoint of endpoints) {

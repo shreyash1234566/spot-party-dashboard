@@ -24,7 +24,7 @@ const MetadataFoodPref = () => {
   // Fetch all food preferences
   const fetchFoodPrefs = async () => {
     try {
-      const res = await fetch('http://44.203.188.5:3000/api/events/get-event-meta', {
+      const res = await fetch('https://api.partywalah.in/api/events/get-event-meta', {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (!res.ok) throw new Error('Failed to fetch food preferences');
@@ -44,7 +44,7 @@ const MetadataFoodPref = () => {
     if (foodPref.trim()) {
       setLoading(true);
       try {
-        const res = await fetch('http://44.203.188.5:3000/api/events/create-food-pref', {
+        const res = await fetch('https://api.partywalah.in/api/events/create-food-pref', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -73,7 +73,7 @@ const MetadataFoodPref = () => {
     if (editValue.trim() && foodPrefs[idx].name !== editValue.trim()) {
       setLoading(true);
       try {
-        const res = await fetch(`http://44.203.188.5:3000/api/events/update-food-pref/${foodPrefs[idx]._id}`, {
+        const res = await fetch(`https://api.partywalah.in/api/events/update-food-pref/${foodPrefs[idx]._id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -100,7 +100,7 @@ const MetadataFoodPref = () => {
   const handleDelete = async (idx: number) => {
     setLoading(true);
     try {
-      const res = await fetch(`http://44.203.188.5:3000/api/events/delete-food-pref/${foodPrefs[idx]._id}`, {
+      const res = await fetch(`https://api.partywalah.in/api/events/delete-food-pref/${foodPrefs[idx]._id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

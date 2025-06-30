@@ -30,7 +30,7 @@ const MetadataVenueType = () => {
   // Fetch all venue types
   const fetchVenueTypes = async () => {
     try {
-      const res = await fetch('http://44.203.188.5:3000/api/events/get-event-meta', {
+      const res = await fetch('https://api.partywalah.in/api/events/get-event-meta', {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (!res.ok) throw new Error('Failed to fetch venue types');
@@ -50,7 +50,7 @@ const MetadataVenueType = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch('http://44.203.188.5:3000/api/events/create-venue-type', {
+      const res = await fetch('https://api.partywalah.in/api/events/create-venue-type', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -105,7 +105,7 @@ const MetadataVenueType = () => {
                         <Button size="sm" onClick={async () => {
                           setLoading(true);
                           try {
-                            const res = await fetch(`http://44.203.188.5:3000/api/events/update-venue-type/${type._id}`, {
+                            const res = await fetch(`https://api.partywalah.in/api/events/update-venue-type/${type._id}`, {
                               method: 'PUT',
                               headers: {
                                 'Content-Type': 'application/json',
@@ -140,7 +140,7 @@ const MetadataVenueType = () => {
                         <Button size="sm" variant="destructive" onClick={async () => {
                           setLoading(true);
                           try {
-                            const res = await fetch(`http://44.203.188.5:3000/api/events/delete-venue-type/${type._id}`, {
+                            const res = await fetch(`https://api.partywalah.in/api/events/delete-venue-type/${type._id}`, {
                               method: 'DELETE',
                               headers: { 'Authorization': `Bearer ${token}` },
                             });

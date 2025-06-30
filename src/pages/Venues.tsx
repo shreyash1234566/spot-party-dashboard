@@ -16,7 +16,7 @@ const Venues = () => {
 
   useEffect(() => {
     setLoading(true);
-    fetch('http://44.203.188.5:3000/api/events/get-event-meta', { headers: { accept: '*/*' } })
+    fetch('https://api.partywalah.in/api/events/get-event-meta', { headers: { accept: '*/*' } })
       .then(res => res.json())
       .then(data => setVenues(Array.isArray(data?.venues) ? data.venues : []))
       .catch(() => setVenues([]))

@@ -25,12 +25,16 @@ const MetadataEventType = () => {
   // Fetch all event types
   const fetchEventTypes = async () => {
     try {
-      const res = await fetch('http://44.203.188.5:3000/api/events/get-event-meta', {
-        headers: { 'Authorization': `Bearer ${token}` },
+      const res = await fetch('https://api.partywalah.in/api/events/get-event-meta', {
+        method: 'GET',
+        headers: {
+          'accept': '*/*',
+          'Authorization': `Bearer ${token}`
+        },
       });
       if (!res.ok) throw new Error('Failed to fetch event types');
       const data = await res.json();
-      setEventTypes(data.eventTypes || []);
+      setEventTypes(data.eventType || []);
     } catch (err) {
       toast({ title: 'Error', description: 'Could not fetch event types', variant: 'destructive' });
     }
@@ -45,7 +49,7 @@ const MetadataEventType = () => {
     if (eventType.trim()) {
       setLoading(true);
       try {
-        const res = await fetch('http://44.203.188.5:3000/api/events/create-event-type', {
+        const res = await fetch('https://api.partywalah.in/api/events/create-event-type', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -74,7 +78,7 @@ const MetadataEventType = () => {
     if (editValue.trim() && eventTypes[idx].name !== editValue.trim()) {
       setLoading(true);
       try {
-        const res = await fetch(`http://44.203.188.5:3000/api/events/update-event-type/${eventTypes[idx]._id}`, {
+        const res = await fetch(`https://api.partywalah.in/api/events/update-event-type/${eventTypes[idx]._id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -101,7 +105,8 @@ const MetadataEventType = () => {
   const handleDelete = async (idx: number) => {
     setLoading(true);
     try {
-      const res = await fetch(`http://44.203.188.5:3000/api/events/delete-event-type/${eventTypes[idx]._id}`, {
+      const id = eventTypes[idx]._id;
+      const res = await fetch(`https://api.partywalah.in/api/events/delete-event-type/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

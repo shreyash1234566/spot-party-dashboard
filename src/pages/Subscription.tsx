@@ -13,7 +13,7 @@ const Subscription = () => {
 
   useEffect(() => {
     setLoading(true);
-    fetch('http://44.203.188.5:3000/api/subscriptions', { headers: { accept: '*/*' } })
+    fetch('https://api.partywalah.in/api/subscriptions', { headers: { accept: '*/*' } })
       .then(res => res.json())
       .then(data => {
         // If your API returns { plans, stats, recentSubscriptions }

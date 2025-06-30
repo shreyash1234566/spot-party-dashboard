@@ -26,7 +26,7 @@ const Users = () => {
 
   useEffect(() => {
     setLoading(true);
-    fetch('http://44.203.188.5:3000/api/admin/users', { headers: { accept: '*/*' } })
+    fetch('https://api.partywalah.in/api/admin/users', { headers: { accept: '*/*' } })
       .then(res => res.json())
       .then(data => setUsers(Array.isArray(data) ? data : data.data || []))
       .catch(() => setUsers([]))

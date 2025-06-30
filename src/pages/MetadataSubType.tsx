@@ -25,7 +25,7 @@ const MetadataSubType = () => {
     if (subType.trim() && parentType) {
       setLoading(true);
       try {
-        const res = await fetch('http://44.203.188.5:3000/api/events/create-event-sub-type', {
+        const res = await fetch('https://api.partywalah.in/api/events/create-event-sub-type', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -55,7 +55,7 @@ const MetadataSubType = () => {
     if (editValue.trim() && editParent) {
       setLoading(true);
       try {
-        const res = await fetch('http://44.203.188.5:3000/api/events/update-event-sub-type', {
+        const res = await fetch('https://api.partywalah.in/api/events/update-event-sub-type', {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -82,7 +82,7 @@ const MetadataSubType = () => {
   const handleDelete = async (idx: number) => {
     setLoading(true);
     try {
-      const res = await fetch('http://44.203.188.5:3000/api/events/delete-event-sub-type', {
+      const res = await fetch('https://api.partywalah.in/api/events/delete-event-sub-type', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

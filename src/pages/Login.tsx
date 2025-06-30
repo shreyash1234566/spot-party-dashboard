@@ -10,8 +10,10 @@ import { Calendar, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  // ...existing code...
+const [email, setEmail] = useState('admin@events.com'); // Pre-fill demo email
+const [password, setPassword] = useState('admin123');   // Pre-fill demo password
+// ...existing code...
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
