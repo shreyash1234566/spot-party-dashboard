@@ -21,7 +21,7 @@ useEffect(() => {
   fetch('https://api.partywalah.in/api/users/my-bookings', {
     headers: {
       accept: '*/*',
-      Authorization: `Bearer  eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ODRiZjJjMTg2MGUzNWQzZjgzZDA1NTIiLCJwaG9uZSI6OTc4MjQxOTE3MywiaWF0IjoxNzUwNzY0NTE0LCJleHAiOjE3NTEzNjkzMTR9.Lj8fcyCoSlQGn9NQ3Y2EP9aE3cEznDGsxJRJgmwsLjA` // <-- Replace with your real token
+      Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ODRiZjJjMTg2MGUzNWQzZjgzZDA1NTIiLCJwaG9uZSI6OTc4MjQxOTE3MywiaWF0IjoxNzUxMzc1Mzc4LCJleHAiOjE3NTE5ODAxNzh9.G2u69cKkBNBodmrUkEQlSemUmA13muAqtfWiQURScH8'
     }
   })
     .then(res => res.json())

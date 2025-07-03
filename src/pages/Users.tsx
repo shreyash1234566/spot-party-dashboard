@@ -1,82 +1,183 @@
+// ============================================================================
+// Imports
+// ============================================================================
 import { useEffect, useState } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 
-interface UserType {
+// ============================================================================
+// Interfaces & Constants
+// ============================================================================
+
+// An accurate interface matching the API response
+interface User {
   _id: string;
-  name: string;
-  email: string;
-  phone: string;
-  role: string;
+  full_name: string | null;
+  email: string | null;
+  phone: number;
+  userType: 'customer' | 'manager' | 'admin';
+  profilePictureUrl: string | null;
+  isProfileComplete: boolean;
+  createdAt: string; // ISO date string
 }
 
 const roleTabs = [
+  { label: 'Customers', value: 'customer' },
   { label: 'Managers', value: 'manager' },
-  { label: 'Clients', value: 'client' },
   { label: 'Admins', value: 'admin' },
 ];
 
-const Users = () => {
-  const [users, setUsers] = useState<UserType[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [tab, setTab] = useState('manager');
+// ============================================================================
+// Component Definition
+// ============================================================================
 
+const Users = () => {
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('customer'); // Default to customer tab
+
+  // Fetch users from the API on component mount
   useEffect(() => {
     setLoading(true);
     fetch('https://api.partywalah.in/api/admin/users', { headers: { accept: '*/*' } })
       .then(res => res.json())
-      .then(data => setUsers(Array.isArray(data) ? data : data.data || []))
-      .catch(() => setUsers([]))
+      .then(data => {
+        // API response has a 'data' property containing the user array
+        if (data && Array.isArray(data.data)) {
+          setAllUsers(data.data);
+        }
+      })
+      .catch(error => {
+        console.error("Failed to fetch users:", error);
+        setAllUsers([]); // Set to empty on error
+      })
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = users.filter(u =>
-    u.role === tab && (
-      u.name?.toLowerCase().includes(search.toLowerCase()) ||
-      u.email?.toLowerCase().includes(search.toLowerCase()) ||
-      u.phone?.toLowerCase().includes(search.toLowerCase())
-    )
-  );
+  // Filter users based on the active tab and search term
+  const filteredUsers = allUsers.filter(user => {
+    // 1. Filter by the selected tab (role)
+    if (user.userType !== activeTab) {
+      return false;
+    }
+    // 2. If no search term, show all users for this tab
+    if (!searchTerm) {
+      return true;
+    }
+    // 3. Otherwise, check if search term matches name, email, or phone
+    const lowerCaseSearch = searchTerm.toLowerCase();
+    const nameMatch = user.full_name?.toLowerCase().includes(lowerCaseSearch);
+    const emailMatch = user.email?.toLowerCase().includes(lowerCaseSearch);
+    const phoneMatch = String(user.phone).includes(lowerCaseSearch);
+
+    return nameMatch || emailMatch || phoneMatch;
+  });
+  
+  // Helper to get initials for Avatar fallback
+  const getInitials = (name: string | null) => {
+    if (!name) return '??';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
 
   return (
     <DashboardLayout>
-      <div className="p-8">
-        <h1 className="text-2xl font-bold mb-4">Users</h1>
-        <Tabs value={tab} onValueChange={setTab} className="mb-6">
-          <TabsList>
-            {roleTabs.map(rt => (
-              <TabsTrigger key={rt.value} value={rt.value}>{rt.label}</TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-        <Input
-          placeholder="Search by name, email, or phone..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="mb-4 max-w-sm"
-        />
-        {loading ? (
-          <div>Loading users...</div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map(user => (
-              <Card key={user._id}>
-                <CardHeader>
-                  <CardTitle>{user.name}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-sm text-gray-700">Email: {user.email}</div>
-                  <div className="text-sm text-gray-700">Phone: {user.phone}</div>
-                  <div className="text-xs mt-2 font-semibold text-indigo-600 uppercase">{user.role}</div>
-                </CardContent>
-              </Card>
-            ))}
-            {filtered.length === 0 && <div className="col-span-full text-gray-500">No users found.</div>}
-          </div>
-        )}
+      <div className="p-4 sm:p-8 space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">User Management</h1>
+          <p className="text-gray-500">View, search, and manage all users.</p>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList>
+                  {roleTabs.map(tab => (
+                    <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+              <Input
+                placeholder={`Search in ${activeTab}s...`}
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="max-w-full sm:max-w-xs"
+              />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[300px]">User</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Joined On</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">
+                      Loading users...
+                    </TableCell>
+                  </TableRow>
+                ) : filteredUsers.length > 0 ? (
+                  filteredUsers.map(user => (
+                    <TableRow key={user._id}>
+                      <TableCell>
+                        <div className="flex items-center gap-4">
+                          <Avatar>
+                            <AvatarImage src={user.profilePictureUrl ?? undefined} alt={user.full_name ?? 'User'} />
+                            <AvatarFallback>{getInitials(user.full_name)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium">{user.full_name || 'N/A'}</div>
+                            <div className="text-sm text-gray-500">{user.email || 'No email'}</div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {user.isProfileComplete ? (
+                          <Badge variant="default">Complete</Badge>
+                        ) : (
+                          <Badge variant="destructive">Incomplete</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>{user.phone}</TableCell>
+                      <TableCell>
+                        {new Date(user.createdAt).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">
+                      No users found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );

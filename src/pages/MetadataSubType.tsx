@@ -1,28 +1,109 @@
+// ============================================================================
+// Imports
+// ============================================================================
+import { useState, useEffect } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useState } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../contexts/AuthContext';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { FileImage } from 'lucide-react';
 
-const eventTypeOptions = ['Birthday', 'Conference', 'Wedding']; // Replace with API data
+// ============================================================================
+// Interfaces
+// ============================================================================
+interface ParentType {
+  _id: string;
+  name: string;
+}
 
+interface SubType {
+  _id: string;
+  name: string;
+  parent: string; // This is the ID of the parent
+  image: string | null;
+}
+
+// ============================================================================
+// Component Definition
+// ============================================================================
 const MetadataSubType = () => {
-  const [subType, setSubType] = useState('');
-  const [parentType, setParentType] = useState('');
-  const [subTypes, setSubTypes] = useState<{name: string, parent: string}[]>([]);
+  // State for creating a new sub-type
+  const [newSubType, setNewSubType] = useState({
+    name: '',
+    parentId: '',
+    imageFile: null as File | null,
+    imageUrl: '',
+  });
+
+  // State for the lists of data
+  const [parentTypes, setParentTypes] = useState<ParentType[]>([]);
+  const [subTypes, setSubTypes] = useState<SubType[]>([]);
+  
+  // General component state
+  const [loading, setLoading] = useState(false);
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
-  const [editParent, setEditParent] = useState('');
-  const [loading, setLoading] = useState(false);
+
   const { user } = useAuth();
-  const token = (user && (user.token as string)) || localStorage.getItem('token') || '';
+  const token = localStorage.getItem('token') || '';
+
+  // ============================================================================
+  // Data Fetching & Helpers
+  // ============================================================================
+
+  const uploadImageAndGetUrl = async (file: File | null): Promise<string> => {
+    if (!file) return '';
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await fetch('https://api.partywalah.in/api/admin/file-upload', {
+        method: 'POST',
+        body: formData,
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Image upload failed');
+      const data = await res.json();
+      return data?.data?.url || '';
+    } catch (err) {
+      console.error('Image upload error:', err);
+      toast({ title: 'Error', description: 'Image upload failed.', variant: 'destructive' });
+      return '';
+    }
+  };
+
+  const fetchMeta = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('https://api.partywalah.in/api/events/get-event-meta', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed to fetch metadata');
+      const data = await res.json();
+      setParentTypes(data.eventType || []);
+      setSubTypes(data.eventSubType || []);
+    } catch (err) {
+      toast({ title: 'Error', description: 'Could not fetch metadata.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMeta();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const handleAdd = async () => {
-    if (subType.trim() && parentType) {
+    if (newSubType.name.trim() && newSubType.parentId && newSubType.imageUrl) {
       setLoading(true);
       try {
         const res = await fetch('https://api.partywalah.in/api/events/create-event-sub-type', {
@@ -31,141 +112,141 @@ const MetadataSubType = () => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
           },
-          body: JSON.stringify({ name: subType.trim(), parent: parentType }),
+          body: JSON.stringify({
+            name: newSubType.name.trim(),
+            parent: newSubType.parentId,
+            image: newSubType.imageUrl,
+          }),
         });
-        if (!res.ok) throw new Error('Failed to create sub type');
-        toast({ title: 'Success', description: 'Sub type created!' });
-        setSubTypes([...subTypes, { name: subType.trim(), parent: parentType }]);
-        setSubType('');
-      } catch (err) {
-        toast({ title: 'Error', description: 'Could not create sub type', variant: 'destructive' });
+        if (!res.ok) {
+           const errorData = await res.json();
+           throw new Error(errorData.message || 'Failed to create sub-type');
+        }
+        setNewSubType({ name: '', parentId: '', imageFile: null, imageUrl: '' });
+        toast({ title: 'Success', description: 'Sub-type created!' });
+        await fetchMeta(); // Refresh both lists
+      } catch (err: any) {
+        toast({ title: 'Error', description: err.message, variant: 'destructive' });
       } finally {
         setLoading(false);
       }
+    } else {
+      toast({ title: 'Missing Information', description: 'Please provide a parent type, a name, and an image.', variant: 'destructive' });
     }
   };
 
-  const handleEdit = (idx: number) => {
-    setEditIdx(idx);
-    setEditValue(subTypes[idx].name);
-    setEditParent(subTypes[idx].parent);
-  };
-
-  const handleSave = async (idx: number) => {
-    if (editValue.trim() && editParent) {
-      setLoading(true);
-      try {
-        const res = await fetch('https://api.partywalah.in/api/events/update-event-sub-type', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ name: editValue.trim(), parent: editParent }),
-        });
-        if (!res.ok) throw new Error('Failed to update sub type');
-        toast({ title: 'Success', description: 'Sub type updated!' });
-        const updatedSubTypes = [...subTypes];
-        updatedSubTypes[idx] = { name: editValue.trim(), parent: editParent };
-        setSubTypes(updatedSubTypes);
-        setEditIdx(null);
-        setEditValue('');
-        setEditParent('');
-      } catch (err) {
-        toast({ title: 'Error', description: 'Could not update sub type', variant: 'destructive' });
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  const handleDelete = async (idx: number) => {
+  const handleDelete = async (subTypeId: string) => {
     setLoading(true);
     try {
-      const res = await fetch('https://api.partywalah.in/api/events/delete-event-sub-type', {
+      const res = await fetch(`https://api.partywalah.in/api/events/delete-event-sub-type/${subTypeId}`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name: subTypes[idx].name, parent: subTypes[idx].parent }),
+        headers: { 'Authorization': `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error('Failed to delete sub type');
-      toast({ title: 'Success', description: 'Sub type deleted!' });
-      setSubTypes(subTypes.filter((_, i) => i !== idx));
-      if (editIdx === idx) {
-        setEditIdx(null);
-        setEditValue('');
-        setEditParent('');
-      }
+      if (!res.ok) throw new Error('Failed to delete sub-type');
+      toast({ title: 'Success', description: 'Sub-type deleted!' });
+      await fetchMeta();
     } catch (err) {
-      toast({ title: 'Error', description: 'Could not delete sub type', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Could not delete sub-type', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   };
 
+  const getParentName = (parentId: string) => {
+    return parentTypes.find(p => p._id === parentId)?.name || 'Unknown Parent';
+  };
+
   return (
     <DashboardLayout>
-      <div className="max-w-xl mx-auto p-8">
+      <div className="max-w-2xl mx-auto p-4 sm:p-8">
         <Card>
           <CardHeader>
             <CardTitle>Event Sub-Types</CardTitle>
-            <p className="text-gray-500 text-sm">Create, view, edit, and delete sub-types for each event type.</p>
+            <CardDescription>Manage specific variations for each main event type.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="parentType">Parent Event Type <span className="text-red-500">*</span></Label>
-              <Select value={parentType} onValueChange={setParentType}>
-                <SelectTrigger className="w-full h-11">
-                  <SelectValue placeholder="Select event type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {eventTypeOptions.map((type, idx) => (
-                    <SelectItem key={idx} value={type}>{type}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="subType">Add New Sub-Type <span className="text-red-500">*</span></Label>
-              <div className="flex gap-2">
-                <Input id="subType" value={subType} onChange={e => setSubType(e.target.value)} placeholder="e.g. Kids, Corporate" className="h-11" />
-                <Button onClick={handleAdd} disabled={!subType.trim() || !parentType} isLoading={loading}>Add</Button>
+          <CardContent className="space-y-8">
+            {/* Section for Adding New Sub-Type */}
+            <div className="space-y-4 p-4 border rounded-lg">
+              <h3 className="font-semibold">Add New Sub-Type</h3>
+              <div className="space-y-2">
+                <Label htmlFor="parentType">Parent Event Type <span className="text-red-500">*</span></Label>
+                <Select
+                  value={newSubType.parentId}
+                  onValueChange={(value) => setNewSubType(prev => ({ ...prev, parentId: value }))}
+                >
+                  <SelectTrigger className="w-full h-11">
+                    <SelectValue placeholder="Select a parent event type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {parentTypes.map((type) => (
+                      <SelectItem key={type._id} value={type._id}>{type.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="subTypeName">Sub-Type Name <span className="text-red-500">*</span></Label>
+                <Input
+                  id="subTypeName"
+                  value={newSubType.name}
+                  onChange={e => setNewSubType(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g. Haldi, Sangeet, Mehendi"
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="subTypeImage">Sub-Type Image <span className="text-red-500">*</span></Label>
+                <Input
+                  id="subTypeImage"
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0] || null;
+                    setNewSubType(prev => ({ ...prev, imageFile: file, imageUrl: '' }));
+                    if (file) {
+                      const url = await uploadImageAndGetUrl(file);
+                      setNewSubType(prev => ({ ...prev, imageUrl: url }));
+                    }
+                  }}
+                  className="h-11"
+                />
+                {newSubType.imageUrl && (
+                  <div className="mt-2">
+                    <img src={newSubType.imageUrl} alt="Preview" className="w-24 h-24 object-cover rounded shadow" />
+                  </div>
+                )}
+              </div>
+              <Button onClick={handleAdd} disabled={!newSubType.name.trim() || !newSubType.parentId || !newSubType.imageUrl || loading}>
+                {loading ? 'Adding...' : 'Add Sub-Type'}
+              </Button>
             </div>
+            
+            {/* Section for Listing Existing Sub-Types */}
             <div>
               <Label>Existing Sub-Types</Label>
-              <ul className="mt-2 space-y-1">
-                {subTypes.length === 0 && <li className="text-gray-400 text-sm">No sub-types yet.</li>}
+              <div className="mt-2 space-y-2">
+                {loading && subTypes.length === 0 && <p className="text-gray-400 text-sm">Loading...</p>}
+                {!loading && subTypes.length === 0 && <p className="text-gray-400 text-sm">No sub-types have been created yet.</p>}
                 {subTypes.map((sub, idx) => (
-                  <li key={idx} className="bg-gray-100 rounded px-3 py-1 inline-block mr-2 mb-2 text-sm">
-                    {editIdx === idx ? (
-                      <span className="flex gap-2 items-center">
-                        <Input value={editValue} onChange={e => setEditValue(e.target.value)} className="h-8 w-32" />
-                        <Select value={editParent} onValueChange={setEditParent}>
-                          <SelectTrigger className="h-8 w-32">
-                            <SelectValue placeholder="Parent" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {eventTypeOptions.map((type, i) => (
-                              <SelectItem key={i} value={type}>{type}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button size="sm" onClick={() => handleSave(idx)} disabled={!editValue.trim() || !editParent} isLoading={loading}>Save</Button>
-                        <Button size="sm" variant="outline" onClick={() => setEditIdx(null)}>Cancel</Button>
-                      </span>
-                    ) : (
-                      <span className="flex gap-2 items-center">
-                        {sub.name} <span className="text-gray-400">({sub.parent})</span>
-                        <Button size="sm" variant="outline" onClick={() => handleEdit(idx)}>Edit</Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleDelete(idx)}>Delete</Button>
-                      </span>
-                    )}
-                  </li>
+                  <div key={sub._id} className="flex items-center justify-between bg-gray-50 p-2 rounded-md">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10 rounded-md">
+                        <AvatarImage src={sub.image || undefined} />
+                        <AvatarFallback className="rounded-md bg-gray-200">
+                          <FileImage className="h-5 w-5 text-gray-400" />
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="font-medium">{sub.name}</div>
+                        <div className="text-xs text-gray-500">Parent: {getParentName(sub.parent)}</div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      <Button size="sm" variant="destructive" onClick={() => handleDelete(sub._id)} disabled={loading}>Delete</Button>
+                    </div>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -6,8 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Search, Edit, Trash2, Eye, Plus, Calendar, MapPin, DollarSign } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import EventView from './EventView';
-import EventEdit from './EventEdit';
 
 const EventList = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -25,10 +23,9 @@ const EventList = () => {
         return res.json();
       })
       .then(data => {
-        // Only keep the submitted event fields and include _id for navigation
         const events = (Array.isArray(data) ? data : data.data || []).map((event: any) => ({
-          _id: event._id, // <-- use this for navigation and keys
-          name: event.name, // { id, name }
+          _id: event._id,
+          name: event.name,
           startDate: event.startDate,
           numberOfGuests: event.numberOfGuests,
           title: event.title,
@@ -39,7 +36,7 @@ const EventList = () => {
           whatsIncluded: event.whatsIncluded || [],
           hostedBy: event.hostedBy,
           partneredBy: event.partneredBy,
-          status: event.status,
+          status: event.status || 'pending',
           description: event.description || ''
         }));
         setEvents(events);
@@ -56,12 +53,16 @@ const EventList = () => {
   );
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Published':
-        return 'bg-green-100 text-green-800';
-      case 'Draft':
+    switch (status?.toLowerCase()) {
+      case 'approved':
+        return 'bg-blue-100 text-blue-800';
+      case 'pending':
         return 'bg-yellow-100 text-yellow-800';
-      case 'Cancelled':
+      case 'complete':
+        return 'bg-green-100 text-green-800';
+      case 'expired':
+        return 'bg-gray-300 text-gray-800';
+      case 'cancelled':
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -166,34 +167,24 @@ const EventList = () => {
                       <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50"
                         onClick={async () => {
                           if (window.confirm('Are you sure you want to delete this event?')) {
-                            // Find the event in the current events array (in case _id is not the backend's real id)
                             const foundEvent = events.find(e => e._id === event._id);
                             if (!foundEvent) {
                               alert('Event not found in local list.');
                               return;
                             }
-                            // Try all possible endpoints for DELETE
-                            const endpoints = [
-                              `https://api.partywalah.in/api/admin/event/${foundEvent._id}`,
-                            ];
-                            let deleted = false;
-                            for (const endpoint of endpoints) {
-                              try {
-                                const res = await fetch(endpoint, {
-                                  method: 'DELETE',
-                                  headers: { 'accept': '*/*' }
-                                });
-                                if (res.ok) {
-                                  setEvents((prev) => prev.filter((e) => e._id !== foundEvent._id));
-                                  deleted = true;
-                                  break;
-                                }
-                              } catch {
-                                // Ignore error and try next endpoint
+                            const endpoint = `https://api.partywalah.in/api/admin/event/${foundEvent._id}`;
+                            try {
+                              const res = await fetch(endpoint, {
+                                method: 'DELETE',
+                                headers: { 'accept': '*/*' }
+                              });
+                              if (res.ok) {
+                                setEvents((prev) => prev.filter((e) => e._id !== foundEvent._id));
+                              } else {
+                                alert('Failed to delete event.');
                               }
-                            }
-                            if (!deleted) {
-                              alert('Failed to delete event. No endpoint accepted the delete.');
+                            } catch {
+                              alert('Failed to delete event.');
                             }
                           }
                         }}

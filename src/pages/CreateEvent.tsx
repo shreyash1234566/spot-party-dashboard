@@ -30,10 +30,12 @@ const CreateEvent = () => {
     numberOfGuests: '',
     hostName: '',
     hostImage: null as File | null,
+    hostImageUrl: '',
     hostLocation: '',
     hostDescription: '',
     partnerName: '',
     partnerImage: null as File | null,
+    partnerImageUrl: '',
     partnerUrl: '',
     partnerDescription: '',
     partnerLocation: '',
@@ -46,7 +48,7 @@ const CreateEvent = () => {
     foodPreferences: '',
     foodPreferencesName: '',
     specialRequirements: '',
-    eventImage: null,
+    eventImage: null as File | null,
     eventImageUrl: '',
   });
 
@@ -94,7 +96,6 @@ const CreateEvent = () => {
     _id: string;
     name: string;
     parent: string;
-    image: string;
   }
   interface EventMeta {
     eventType: EventTypeMeta[];
@@ -220,122 +221,141 @@ const CreateEvent = () => {
 
   // Image upload
   const uploadImageAndGetUrl = async (file: File | null, label?: string): Promise<string> => {
-  if (!file) return '';
-  const formData = new FormData();
-  formData.append('file', file);
-  try {
-    const response = await fetch('https://api.partywalah.in/api/admin/file-upload', {
-      method: 'POST',
-      body: formData,
-    });
-    if (!response.ok) throw new Error('Image upload failed');
-    const data = await response.json();
-    const url = data?.data?.url || '';
-    if (label) {
-      console.log(`${label} uploaded URL:`, url);
+    if (!file) return '';
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const { apiFetch } = await import('../lib/api');
+      const response = await apiFetch('https://api.partywalah.in/api/admin/file-upload', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!response.ok) throw new Error('Image upload failed');
+      const data = await response.json();
+      const url = data?.data?.url || '';
+      if (label) {
+        console.log(`${label} uploaded URL:`, url);
+      }
+      return url;
+    } catch (err) {
+      console.error('Image upload error:', err);
+      return '';
     }
-    return url;
-  } catch (err) {
-    console.error('Image upload error:', err);
-    return '';
-  }
-};
+  };
 
-  // Form submission
+  // ============================================
+  // Form submission (WITH CLEARER LOGS)
+  // ============================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-
-      // Upload event image if present
-      let eventImageUrl = '';
-if (formData.eventImage) {
-  eventImageUrl = await uploadImageAndGetUrl(formData.eventImage, 'Event image'); // <-- add label here
-}
-
-      const [hostImageUrl, partnerImageUrl] = await Promise.all([
-  uploadImageAndGetUrl(formData.hostImage, 'Host image'),     // <-- add label here
-  uploadImageAndGetUrl(formData.partnerImage, 'Partner image')// <-- add label here
-]);
       const selectedEventType = meta?.eventType.find(type => type._id === formData.eventType);
       const selectedSubType = meta?.eventSubType.find(sub => sub._id === formData.eventSubType);
       const venueType = formData.venueType ? [{ id: formData.venueType, name: formData.venueTypeName || '' }] : [];
       const foodPreferences = formData.foodPreferences ? [{ id: formData.foodPreferences, name: formData.foodPreferencesName || '' }] : [];
 
-      // Build entry requirements payload as a single array containing both cardEntry and dynamic requirements
-      // API expects: [{ title: string, list: string[], _id?: string }]
-      const entryReqPayload: Array<{ title: string; list: string[]; _id?: string }> = [];
-      // Always add cardEntry if filled (as a text requirement with empty list)
+      const entryReqPayload: Array<{
+          type: string;
+          title: string;
+          description: string;
+          list: string[];
+        }> = [];
+
       if (cardEntry.title.trim()) {
-        entryReqPayload.push({ title: String(cardEntry.title), list: cardEntry.data ? [String(cardEntry.data)] : [] });
+        entryReqPayload.push({
+            type: 'Card Entry',
+            title: cardEntry.title,
+            description: cardEntry.data,
+            list: [],
+        });
       }
-      // Add dynamic requirements
+
       entryRequirements.forEach((req) => {
         if (!req.title.trim()) return;
         if (req.type === 'string') {
-          // For text, put description in list as single item
-          if (!req.description.trim()) return;
-          entryReqPayload.push({ title: String(req.title), list: [String(req.description)] });
+          entryReqPayload.push({
+            type: req.type,
+            title: req.title,
+            description: req.description,
+            list: [],
+          });
         } else if (req.type === 'array') {
-          // For array, filter out empty items
-          const filteredItems = req.items.filter(item => item.trim() !== '').map(item => String(item));
-          entryReqPayload.push({ title: String(req.title), list: filteredItems });
+          const filteredItems = req.items.filter(item => item.trim() !== '');
+          if (filteredItems.length > 0) {
+            entryReqPayload.push({
+              type: req.type,
+              title: req.title,
+              description: '',
+              list: filteredItems,
+            });
+          }
         }
       });
 
-      // ...existing code...
-const apiData: any = {
-  name: {
-    id: formData.eventType,
-    name: selectedEventType?.name || '',
-  },
-  subType: selectedSubType ? [{ id: selectedSubType._id, name: selectedSubType.name }] : undefined,
-  startDate: formData.startDate && formData.time
-    ? new Date(`${formData.startDate}T${formData.time}`).toISOString()
-    : new Date(formData.startDate).toISOString(),
-  endDate: formData.startDate && formData.time
-    ? new Date(`${formData.startDate}T${formData.time}`).toISOString()
-    : new Date(formData.startDate).toISOString(),
-  numberOfGuests: formData.numberOfGuests ? parseInt(formData.numberOfGuests) : undefined,
-  venueType: venueType.length > 0 ? venueType : undefined,
-  foodPreferences: foodPreferences.length > 0 ? foodPreferences : undefined,
-  specialRequirements: formData.specialRequirements || undefined,
-  title: formData.name,
-  description: formData.description || undefined, // <-- Add this line to include event description
-  price: formData.price ? parseFloat(formData.price) : undefined,
-  location: formData.location || undefined,
-  tags: formData.tags.length ? formData.tags : undefined,
-  whatsIncluded: formData.whatsIncluded.filter(item => item.trim()),
-  hostedBy: formData.hostName ? {
-    image: hostImageUrl || undefined,
-    name: formData.hostName,
-    location: formData.hostLocation || undefined,
-    description: formData.hostDescription || undefined
-  } : undefined,
-  partneredBy: formData.partnerName ? {
-    image: partnerImageUrl || undefined,
-    name: formData.partnerName,
-    location: formData.partnerLocation || undefined,
-    description: formData.partnerDescription || undefined,
-    url: formData.partnerUrl || undefined,
-  } : undefined,
-  entryRequirements: entryReqPayload.length > 0 ? entryReqPayload : undefined,
-  eventImage: eventImageUrl || undefined,
-};
-// ...existing code...
-      // Log all data that will be sent
-      console.log('Event formData:', formData);
-      console.log('Card Entry:', cardEntry);
-      console.log('Entry Requirements:', entryRequirements);
-      console.log('entryReqPayload:', entryReqPayload); // Log the actual array
-      console.log('API Payload:', apiData);
+      const apiData: any = {
+        name: {
+          id: formData.eventType,
+          name: selectedEventType?.name || '',
+        },
+        subType: selectedSubType ? [{ id: selectedSubType._id, name: selectedSubType.name }] : undefined,
+        startDate: formData.startDate && formData.time
+          ? new Date(`${formData.startDate}T${formData.time}`).toISOString()
+          : new Date(formData.startDate).toISOString(),
+        endDate: formData.startDate && formData.time
+          ? new Date(`${formData.startDate}T${formData.time}`).toISOString()
+          : new Date(formData.startDate).toISOString(),
+        numberOfGuests: formData.numberOfGuests ? parseInt(formData.numberOfGuests) : undefined,
+        venueType: venueType.length > 0 ? venueType : undefined,
+        foodPreferences: foodPreferences.length > 0 ? foodPreferences : undefined,
+        specialRequirements: formData.specialRequirements || undefined,
+        
+        // --- Fields moved for clarity ---
+        title: formData.name,
+        image: formData.eventImageUrl || undefined,
+        description: formData.description || undefined,
+        // ---------------------------------
+        
+        price: formData.price ? parseFloat(formData.price) : undefined,
+        location: formData.location || undefined,
+        tags: formData.tags.length ? formData.tags : undefined,
+        whatsIncluded: formData.whatsIncluded.filter(item => item.trim()),
+        hostedBy: formData.hostName ? {
+          image: formData.hostImageUrl || undefined,
+          name: formData.hostName,
+          location: formData.hostLocation || undefined,
+          description: formData.hostDescription || undefined
+        } : undefined,
+        partneredBy: formData.partnerName ? {
+          image: formData.partnerImageUrl || undefined,
+          name: formData.partnerName,
+          location: formData.partnerLocation || undefined,
+          description: formData.partnerDescription || undefined,
+          url: formData.partnerUrl || undefined,
+        } : undefined,
+        entryRequirements: entryReqPayload.length > 0 ? entryReqPayload : undefined,
+      };
 
-      const response = await fetch('https://api.partywalah.in/api/admin/events', {
+      // ==========================================================
+      // NEW: Distinct and clear console logs for debugging
+      // ==========================================================
+      console.groupCollapsed('🚀 Sending Data to API...');
+      console.log('Event Title:', apiData.title);
+      console.log('✅ Main Event Image URL:', apiData.image); // The proof is here
+      console.log('Host Info:', apiData.hostedBy);
+      console.log('Partner Info:', apiData.partneredBy);
+      console.log('Entry Requirements:', apiData.entryRequirements);
+      console.log('--- Full Payload Below ---');
+      console.log(apiData);
+      console.groupEnd();
+      // ==========================================================
+
+      const { apiFetch } = await import('../lib/api');
+      const response = await apiFetch('https://api.partywalah.in/api/admin/events', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'accept': '*/*',
         },
         body: JSON.stringify(apiData)
       });
@@ -345,7 +365,7 @@ const apiData: any = {
         throw new Error(errorData.message || 'Failed to create event');
       }
 
-      const result = await response.json();
+      await response.json();
       toast({
         title: "Event Created Successfully!",
         description: "Your event has been saved and is ready for review.",
@@ -363,26 +383,25 @@ const apiData: any = {
     }
   };
 
+
   // Fetch metadata
   useEffect(() => {
-    fetch('https://api.partywalah.in/api/events/get-event-meta', {
-      headers: {
-        'accept': '*/*',
-      }
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('Network response was not ok');
-        return res.json();
-      })
-      .then((data) => {
-        console.log('Event type metadata:', data);
-        setMeta(data as EventMeta);
-      })
-      .catch(err => console.error('Failed to fetch metadata:', err));
+    import('../lib/api').then(({ apiFetch }) => {
+      apiFetch('https://api.partywalah.in/api/events/get-event-meta')
+        .then(res => {
+          if (!res.ok) throw new Error('Network response was not ok');
+          return res.json();
+        })
+        .then((data) => {
+          console.log('Event type metadata:', data);
+          setMeta(data as EventMeta);
+        })
+        .catch(err => console.error('Failed to fetch metadata:', err));
+    });
   }, []);
 
   // ============================================================================
-  // JSX Rendering
+  // JSX Rendering (WITH REORDERED SECTIONS)
   // ============================================================================
   return (
     <DashboardLayout>
@@ -393,40 +412,7 @@ const apiData: any = {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Event Image Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Event Image</CardTitle>
-              <CardDescription>Upload a main image for your event</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <Label htmlFor="eventImage">Event Image</Label>
-                <Input
-                  id="eventImage"
-                  type="file"
-                  accept="image/*"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0] || null;
-                    setFormData((prev) => ({ ...prev, eventImage: file }));
-                    if (file) {
-                      const url = await uploadImageAndGetUrl(file);
-                      setFormData((prev) => ({ ...prev, eventImageUrl: url }));
-                      console.log('Event image uploaded URL:', url);
-                    } else {
-                      setFormData((prev) => ({ ...prev, eventImageUrl: '' }));
-                    }
-                  }}
-                  className="h-11"
-                />
-                {formData.eventImageUrl && (
-                  <div className="mt-2">
-                    <img src={formData.eventImageUrl} alt="Event" className="w-48 h-32 object-cover rounded shadow" />
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          
           {/* Event Type Section */}
           <Card>
             <CardHeader>
@@ -502,116 +488,153 @@ const apiData: any = {
           {/* Basic Event Details Section */}
           <Card>
             <CardHeader>
-  <div className="flex items-center gap-2">
-    <input type="checkbox" checked={enabledSections.eventDetails} onChange={() => handleSectionToggle('eventDetails')} />
-    <CardTitle className="flex items-center space-x-2">
-      <CalendarIcon className="w-5 h-5 text-indigo-600" />
-      <span>Event Details</span>
-    </CardTitle>
-  </div>
-  <CardDescription>Basic information about your event</CardDescription>
-</CardHeader>
-{enabledSections.eventDetails && (
-  <CardContent className="space-y-6">
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div className="space-y-2">
-        <Label htmlFor="name">Event Name *</Label>
-        <Input
-          id="name"
-          value={formData.name}
-          onChange={(e) => handleInputChange('name', e.target.value)}
-          placeholder="Enter event name"
-          className="h-11"
-          required
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="description">Event Description *</Label>
-        <Textarea
-          id="description"
-          value={formData.description}
-          onChange={(e) => handleInputChange('description', e.target.value)}
-          placeholder="Enter event description"
-          className="min-h-24"
-          required
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="location">Location *</Label>
-        <div className="relative">
-          <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-          <Input
-            id="location"
-            value={formData.location}
-            onChange={(e) => handleInputChange('location', e.target.value)}
-            placeholder="Event location"
-            className="pl-10 h-11"
-            required
-          />
-        </div>
-      </div>
-    </div>
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-      <div className="space-y-2">
-        <Label htmlFor="price">Price *</Label>
-        <div className="flex">
-          <Select value={formData.currency} onValueChange={(value) => handleInputChange('currency', value)}>
-            <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="₹">₹</SelectItem>
-              <SelectItem value="$">$</SelectItem>
-            </SelectContent>
-          </Select>
-          <Input
-            id="price"
-            type="number"
-            value={formData.price}
-            onChange={(e) => handleInputChange('price', e.target.value)}
-            placeholder="0"
-            className="flex-1 ml-2 h-11"
-            required
-          />
-        </div>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="numberOfGuests">Number of Guests *</Label>
-        <Input
-          id="numberOfGuests"
-          type="number"
-          value={formData.numberOfGuests}
-          onChange={(e) => handleInputChange('numberOfGuests', e.target.value)}
-          placeholder="0"
-          className="h-11"
-          required
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="startDate">Date *</Label>
-        <Input
-          id="startDate"
-          type="date"
-          value={formData.startDate}
-          onChange={(e) => handleInputChange('startDate', e.target.value)}
-          className="h-11"
-          required
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="time">Time *</Label>
-        <Input
-          id="time"
-          type="time"
-          value={formData.time}
-          onChange={(e) => handleInputChange('time', e.target.value)}
-          className="h-11"
-          required
-        />
-      </div>
-    </div>
-  </CardContent>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" checked={enabledSections.eventDetails} onChange={() => handleSectionToggle('eventDetails')} />
+                <CardTitle className="flex items-center space-x-2">
+                  <CalendarIcon className="w-5 h-5 text-indigo-600" />
+                  <span>Event Details</span>
+                </CardTitle>
+              </div>
+              <CardDescription>Basic information about your event</CardDescription>
+            </CardHeader>
+            {enabledSections.eventDetails && (
+            <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                    <Label htmlFor="name">Event Name *</Label>
+                    <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    placeholder="Enter event name"
+                    className="h-11"
+                    required
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="description">Event Description *</Label>
+                    <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => handleInputChange('description', e.target.value)}
+                    placeholder="Enter event description"
+                    className="min-h-24"
+                    required
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="location">Location *</Label>
+                    <div className="relative">
+                    <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                    <Input
+                        id="location"
+                        value={formData.location}
+                        onChange={(e) => handleInputChange('location', e.target.value)}
+                        placeholder="Event location"
+                        className="pl-10 h-11"
+                        required
+                    />
+                    </div>
+                </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="space-y-2">
+                    <Label htmlFor="price">Price *</Label>
+                    <div className="flex">
+                    <Select value={formData.currency} onValueChange={(value) => handleInputChange('currency', value)}>
+                        <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                        <SelectItem value="₹">₹</SelectItem>
+                        <SelectItem value="$">$</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Input
+                        id="price"
+                        type="number"
+                        value={formData.price}
+                        onChange={(e) => handleInputChange('price', e.target.value)}
+                        placeholder="0"
+                        className="flex-1 ml-2 h-11"
+                        required
+                    />
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="numberOfGuests">Number of Guests *</Label>
+                    <Input
+                    id="numberOfGuests"
+                    type="number"
+                    value={formData.numberOfGuests}
+                    onChange={(e) => handleInputChange('numberOfGuests', e.target.value)}
+                    placeholder="0"
+                    className="h-11"
+                    required
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="startDate">Date *</Label>
+                    <Input
+                    id="startDate"
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => handleInputChange('startDate', e.target.value)}
+                    className="h-11"
+                    required
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="time">Time *</Label>
+                    <Input
+                    id="time"
+                    type="time"
+                    value={formData.time}
+                    onChange={(e) => handleInputChange('time', e.target.value)}
+                    className="h-11"
+                    required
+                    />
+                </div>
+                </div>
+            </CardContent>
             )}
           </Card>
-
+          
+          {/* ======================================================== */}
+          {/* NEW: Event Image Section moved here for clarity */}
+          {/* ======================================================== */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Event Image</CardTitle>
+              <CardDescription>Upload the main image for your event. This is required.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Label htmlFor="eventImage">Event Image *</Label>
+                <Input
+                  id="eventImage"
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0] || null;
+                    setFormData((prev) => ({ ...prev, eventImage: file }));
+                    if (file) {
+                      const url = await uploadImageAndGetUrl(file, 'Event Image');
+                      setFormData((prev) => ({ ...prev, eventImageUrl: url }));
+                    } else {
+                      setFormData((prev) => ({ ...prev, eventImageUrl: '' }));
+                    }
+                  }}
+                  className="h-11"
+                  required
+                />
+                {formData.eventImageUrl && (
+                  <div className="mt-2">
+                    <img src={formData.eventImageUrl} alt="Event" className="w-48 h-32 object-cover rounded shadow" />
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+          
           {/* Tags Section */}
           <Card>
             <CardHeader>
@@ -698,25 +721,29 @@ const apiData: any = {
                       <Input id="hostLocation" value={formData.hostLocation} onChange={(e) => handleInputChange('hostLocation', e.target.value)} placeholder="Host's location" className="h-11" />
                     </div>
                 </div>
-                {/* Removed Host Description field */}
                 <div className="space-y-2">
                     <Label htmlFor="hostImage">Host Image</Label>
                     <Input
-  id="eventImage"
-  type="file"
-  accept="image/*"
-  onChange={async (e) => {
-    const file = e.target.files?.[0] || null;
-    setFormData((prev) => ({ ...prev, eventImage: file }));
-    if (file) {
-      const url = await uploadImageAndGetUrl(file, 'Event image');
-      setFormData((prev) => ({ ...prev, eventImageUrl: url }));
-    } else {
-      setFormData((prev) => ({ ...prev, eventImageUrl: '' }));
-    }
-  }}
-  className="h-11"
-/>
+                      id="hostImage"
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0] || null;
+                        setFormData((prev) => ({ ...prev, hostImage: file }));
+                        if (file) {
+                          const url = await uploadImageAndGetUrl(file, 'Host image');
+                          setFormData((prev) => ({ ...prev, hostImageUrl: url }));
+                        } else {
+                          setFormData((prev) => ({ ...prev, hostImageUrl: '' }));
+                        }
+                      }}
+                      className="h-11"
+                    />
+                    {formData.hostImageUrl && (
+                      <div className="mt-2">
+                        <img src={formData.hostImageUrl} alt="Host" className="w-32 h-32 object-cover rounded-full shadow" />
+                      </div>
+                    )}
                 </div>
               </CardContent>
             )}
@@ -743,27 +770,30 @@ const apiData: any = {
                       <Input id="partnerLocation" value={formData.partnerLocation} onChange={(e) => handleInputChange('partnerLocation', e.target.value)} placeholder="Partner's location" className="h-11" />
                     </div>
                 </div>
-                {/* Removed Partner Description field */}
                 <div className="space-y-2">
                     <Label htmlFor="partnerImage">Partner Image</Label>
                     <Input
-  id="eventImage"
-  type="file"
-  accept="image/*"
-  onChange={async (e) => {
-    const file = e.target.files?.[0] || null;
-    setFormData((prev) => ({ ...prev, eventImage: file }));
-    if (file) {
-      const url = await uploadImageAndGetUrl(file, 'Event image');
-      setFormData((prev) => ({ ...prev, eventImageUrl: url }));
-    } else {
-      setFormData((prev) => ({ ...prev, eventImageUrl: '' }));
-    }
-  }}
-  className="h-11"
-/>
+                      id="partnerImage"
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0] || null;
+                        setFormData((prev) => ({ ...prev, partnerImage: file }));
+                        if (file) {
+                          const url = await uploadImageAndGetUrl(file, 'Partner image');
+                          setFormData((prev) => ({ ...prev, partnerImageUrl: url }));
+                        } else {
+                          setFormData((prev) => ({ ...prev, partnerImageUrl: '' }));
+                        }
+                      }}
+                      className="h-11"
+                    />
+                    {formData.partnerImageUrl && (
+                      <div className="mt-2">
+                        <img src={formData.partnerImageUrl} alt="Partner" className="w-32 h-32 object-cover rounded-full shadow" />
+                      </div>
+                    )}
                 </div>
-                {/* Removed Partner URL field */}
               </CardContent>
             )}
           </Card>
@@ -965,10 +995,12 @@ const apiData: any = {
                   numberOfGuests: '',
                   hostName: '',
                   hostImage: null,
+                  hostImageUrl: '',
                   hostLocation: '',
                   hostDescription: '',
                   partnerName: '',
                   partnerImage: null,
+                  partnerImageUrl: '',
                   partnerUrl: '',
                   partnerDescription: '',
                   partnerLocation: '',
