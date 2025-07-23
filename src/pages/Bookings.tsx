@@ -12,23 +12,26 @@ interface BookingType {
   location: string;
 }
 
+
+
 const Bookings = () => {
   const [bookings, setBookings] = useState<BookingType[]>([]);
   const [loading, setLoading] = useState(true);
 
-useEffect(() => {
-  setLoading(true);
-  fetch('https://api.partywalah.in/api/users/my-bookings', {
-    headers: {
-      accept: '*/*',
-      Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ODRiZjJjMTg2MGUzNWQzZjgzZDA1NTIiLCJwaG9uZSI6OTc4MjQxOTE3MywiaWF0IjoxNzUxMzc1Mzc4LCJleHAiOjE3NTE5ODAxNzh9.G2u69cKkBNBodmrUkEQlSemUmA13muAqtfWiQURScH8'
-    }
-  })
-    .then(res => res.json())
-    .then(data => setBookings(Array.isArray(data.data) ? data.data : []))
-    .catch(() => setBookings([]))
-    .finally(() => setLoading(false));
-}, []);
+  useEffect(() => {
+    setLoading(true);
+    fetch('https://api.partywalah.in/api/users/my-bookings', {
+      headers: {
+        accept: '*/*',
+        Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ODRiZjJjMTg2MGUzNWQzZjgzZDA1NTIiLCJwaG9uZSI6OTc4MjQxOTE3MywiaWF0IjoxNzUzMjYxMzE3LCJleHAiOjE3NTM4NjYxMTd9.9jdH9aSJBpuF9_bUj4Up3W2FGLjEzjlKcXZo51xZke4'
+      }
+    })
+      .then(res => res.json())
+      .then(data => setBookings(Array.isArray(data.data?.data) ? data.data.data : []))
+      .catch(() => setBookings([]))
+      .finally(() => setLoading(false));
+  }, []);
+  
 
   return (
     <DashboardLayout>

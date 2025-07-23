@@ -8,6 +8,7 @@ import { Search, Edit, Trash2, Eye, Plus, Calendar, MapPin, DollarSign } from 'l
 import { Link, useNavigate } from 'react-router-dom';
 
 const EventList = () => {
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

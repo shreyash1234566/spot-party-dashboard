@@ -48,6 +48,7 @@ const MetadataSubType = () => {
   const [loading, setLoading] = useState(false);
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [editParentId, setEditParentId] = useState('');
 
   const { user } = useAuth();
   const token = localStorage.getItem('token') || '';
@@ -138,7 +139,7 @@ const MetadataSubType = () => {
   const handleDelete = async (subTypeId: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`https://api.partywalah.in/api/events/delete-event-sub-type/${subTypeId}`, {
+      const res = await fetch(`https://api.partywalah.in/api/admin/event-subtype/${subTypeId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` },
       });
@@ -154,6 +155,46 @@ const MetadataSubType = () => {
 
   const getParentName = (parentId: string) => {
     return parentTypes.find(p => p._id === parentId)?.name || 'Unknown Parent';
+  };
+
+  const handleEdit = (idx: number) => {
+    setEditIdx(idx);
+    setEditValue(subTypes[idx].name);
+    setEditParentId(subTypes[idx].parent);
+  };
+
+  const handleSave = async (idx: number) => {
+    if (editValue.trim() && editParentId) {
+      setLoading(true);
+      try {
+        const res = await fetch(`https://api.partywalah.in/api/admin/event-subtype/${subTypes[idx]._id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ 
+            name: editValue.trim(), 
+            parent: editParentId,
+            image: subTypes[idx].image 
+          }),
+        });
+        if (!res.ok) throw new Error('Failed to update sub-type');
+        setEditIdx(null);
+        setEditValue('');
+        setEditParentId('');
+        toast({ title: 'Success', description: 'Sub-type updated!' });
+        await fetchMeta();
+      } catch (err) {
+        toast({ title: 'Error', description: 'Could not update sub-type', variant: 'destructive' });
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      setEditIdx(null);
+      setEditValue('');
+      setEditParentId('');
+    }
   };
 
   return (
@@ -236,14 +277,50 @@ const MetadataSubType = () => {
                           <FileImage className="h-5 w-5 text-gray-400" />
                         </AvatarFallback>
                       </Avatar>
-                      <div>
-                        <div className="font-medium">{sub.name}</div>
-                        <div className="text-xs text-gray-500">Parent: {getParentName(sub.parent)}</div>
+                      {editIdx === idx ? (
+                        <div className="space-y-2">
+                          <Input 
+                            value={editValue} 
+                            onChange={e => setEditValue(e.target.value)} 
+                            className="h-9" 
+                            placeholder="Sub-type name"
+                          />
+                          <Select value={editParentId} onValueChange={setEditParentId}>
+                            <SelectTrigger className="h-9">
+                              <SelectValue placeholder="Select parent" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {parentTypes.map((type) => (
+                                <SelectItem key={type._id} value={type._id}>{type.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="font-medium">{sub.name}</div>
+                          <div className="text-xs text-gray-500">Parent: {getParentName(sub.parent)}</div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {editIdx === idx ? (
+                      <div className="flex gap-2 items-center">
+                        <Button size="sm" onClick={() => handleSave(idx)} disabled={!editValue.trim() || !editParentId || loading}>
+                          {loading ? '...' : 'Save'}
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => {
+                          setEditIdx(null);
+                          setEditValue('');
+                          setEditParentId('');
+                        }}>Cancel</Button>
                       </div>
-                    </div>
-                    <div className="flex gap-2 items-center">
-                      <Button size="sm" variant="destructive" onClick={() => handleDelete(sub._id)} disabled={loading}>Delete</Button>
-                    </div>
+                    ) : (
+                      <div className="flex gap-2 items-center">
+                        <Button size="sm" variant="outline" onClick={() => handleEdit(idx)}>Edit</Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleDelete(sub._id)} disabled={loading}>Delete</Button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

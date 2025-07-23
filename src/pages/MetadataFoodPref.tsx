@@ -18,7 +18,7 @@ const MetadataFoodPref = () => {
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
   const { user } = useAuth();
-  const token = (user && (user.token as string)) || localStorage.getItem('token') || '';
+  const token = localStorage.getItem('token') || '';
   const [loading, setLoading] = useState(false);
 
   // Fetch all food preferences
@@ -73,13 +73,13 @@ const MetadataFoodPref = () => {
     if (editValue.trim() && foodPrefs[idx].name !== editValue.trim()) {
       setLoading(true);
       try {
-        const res = await fetch(`https://api.partywalah.in/api/events/update-food-pref/${foodPrefs[idx]._id}`, {
+        const res = await fetch(`https://api.partywalah.in/api/admin/food-pref/${foodPrefs[idx]._id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
           },
-          body: JSON.stringify({ name: editValue.trim() }),
+          body: JSON.stringify({ name: editValue.trim(), description: 'Updated food preference' }),
         });
         if (!res.ok) throw new Error('Failed to update food preference');
         setEditIdx(null);
@@ -100,7 +100,7 @@ const MetadataFoodPref = () => {
   const handleDelete = async (idx: number) => {
     setLoading(true);
     try {
-      const res = await fetch(`https://api.partywalah.in/api/events/delete-food-pref/${foodPrefs[idx]._id}`, {
+      const res = await fetch(`https://api.partywalah.in/api/admin/food-pref/${foodPrefs[idx]._id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

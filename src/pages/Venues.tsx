@@ -18,8 +18,9 @@ const Venues = () => {
   const [editVenue, setEditVenue] = useState<Partial<VenueType>>({});
 
   useEffect(() => {
+    const token = localStorage.getItem('token') || '';
     setLoading(true);
-    fetch('https://api.partywalah.in/api/events/get-event-meta', { headers: { accept: '*/*' } })
+    fetch('https://api.partywalah.in/api/events/get-event-meta', { headers: { accept: '*/*', 'Authorization': `Bearer ${token}` } })
       .then(res => res.json())
       .then(data => setVenues(Array.isArray(data?.venues) ? data.venues : []))
       .catch(() => setVenues([]))
@@ -31,13 +32,46 @@ const Venues = () => {
     setEditVenue({ ...venue });
   };
 
-  const handleSave = () => {
-    // Optionally send a PUT request here to save data on server
-    setVenues(prev =>
-      prev.map(v => (v._id === editId ? { ...(v as VenueType), ...editVenue } : v))
-    );
-    setEditId(null);
-    setEditVenue({});
+  const handleSave = async () => {
+    if (!editId || !editVenue.name || !editVenue.city || !editVenue.state || !editVenue.pincode) {
+      return;
+    }
+    
+    const token = localStorage.getItem('token') || '';
+    setLoading(true);
+    try {
+      const res = await fetch(`https://api.partywalah.in/api/admin/venue/${editId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: editVenue.name,
+          pincode: editVenue.pincode,
+          state: editVenue.state,
+          city: editVenue.city
+        })
+      });
+      
+      if (!res.ok) throw new Error('Failed to update venue');
+      
+      setEditId(null);
+      setEditVenue({});
+      
+      // Refresh the venues list
+      const updatedRes = await fetch('https://api.partywalah.in/api/events/get-event-meta', { 
+        headers: { accept: '*/*', 'Authorization': `Bearer ${token}` } 
+      });
+      const updatedData = await updatedRes.json();
+      setVenues(Array.isArray(updatedData?.venues) ? updatedData.venues : []);
+      
+    } catch (error) {
+      console.error('Failed to update venue:', error);
+      alert('Failed to update venue. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCancel = () => {
@@ -47,6 +81,38 @@ const Venues = () => {
 
   const handleChange = (field: keyof VenueType, value: string) => {
     setEditVenue(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleDelete = async (venueId: string) => {
+    if (!window.confirm('Are you sure you want to delete this venue?')) {
+      return;
+    }
+    
+    const token = localStorage.getItem('token') || '';
+    setLoading(true);
+    try {
+      const res = await fetch(`https://api.partywalah.in/api/admin/venue/${venueId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!res.ok) throw new Error('Failed to delete venue');
+      
+      // Refresh the venues list
+      const updatedRes = await fetch('https://api.partywalah.in/api/events/get-event-meta', { 
+        headers: { accept: '*/*', 'Authorization': `Bearer ${token}` } 
+      });
+      const updatedData = await updatedRes.json();
+      setVenues(Array.isArray(updatedData?.venues) ? updatedData.venues : []);
+      
+    } catch (error) {
+      console.error('Failed to delete venue:', error);
+      alert('Failed to delete venue. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -97,8 +163,16 @@ const Venues = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{venue.city}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{venue.state}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{venue.pincode}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                           <Button size="sm" onClick={() => handleEditClick(venue)}>Edit</Button>
+                          <Button 
+                            size="sm" 
+                            variant="destructive" 
+                            onClick={() => handleDelete(venue._id)}
+                            disabled={loading}
+                          >
+                            Delete
+                          </Button>
                         </td>
                       </>
                     )}
