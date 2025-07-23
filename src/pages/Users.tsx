@@ -44,20 +44,25 @@ const roleTabs = [
 // ============================================================================
 
 const Users = () => {
+  const token = localStorage.getItem('token') || '';
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('customer'); // Default to customer tab
+  const [activeTab, setActiveTab] = useState('customer');
 
   // Fetch users from the API on component mount
   useEffect(() => {
     setLoading(true);
-    fetch('https://api.partywalah.in/api/admin/users', { headers: { accept: '*/*' } })
+    fetch('https://api.partywalah.in/api/admin/users', { headers: { accept: '*/*', 'Authorization': `Bearer ${token}` } })
       .then(res => res.json())
       .then(data => {
-        // API response has a 'data' property containing the user array
-        if (data && Array.isArray(data.data)) {
-          setAllUsers(data.data);
+        // --- FIX IS HERE ---
+        // The API nests the user array inside `data.data`. We need to access it correctly.
+        if (data && data.data && Array.isArray(data.data.data)) {
+          setAllUsers(data.data.data);
+        } else {
+          console.error("API response did not contain the expected user array structure:", data);
+          setAllUsers([]);
         }
       })
       .catch(error => {
@@ -65,19 +70,16 @@ const Users = () => {
         setAllUsers([]); // Set to empty on error
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [token]); // Added token to dependency array for correctness
 
   // Filter users based on the active tab and search term
   const filteredUsers = allUsers.filter(user => {
-    // 1. Filter by the selected tab (role)
     if (user.userType !== activeTab) {
       return false;
     }
-    // 2. If no search term, show all users for this tab
     if (!searchTerm) {
       return true;
     }
-    // 3. Otherwise, check if search term matches name, email, or phone
     const lowerCaseSearch = searchTerm.toLowerCase();
     const nameMatch = user.full_name?.toLowerCase().includes(lowerCaseSearch);
     const emailMatch = user.email?.toLowerCase().includes(lowerCaseSearch);

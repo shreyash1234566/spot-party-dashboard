@@ -137,13 +137,13 @@ const MetadataEventType = () => {
       setLoading(true);
       try {
         // NOTE: The update endpoint may also need to support image updates in the future.
-        const res = await fetch(`https://api.partywalah.in/api/events/update-event-type/${eventTypes[idx]._id}`, {
+        const res = await fetch(`https://api.partywalah.in/api/admin/event-type/${eventTypes[idx]._id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
           },
-          body: JSON.stringify({ name: editValue.trim() }),
+          body: JSON.stringify({ name: editValue.trim(), image: eventTypes[idx].image }),
         });
         if (!res.ok) throw new Error('Failed to update event type');
         setEditIdx(null); setEditValue('');
@@ -163,7 +163,7 @@ const MetadataEventType = () => {
     setLoading(true);
     try {
       const id = eventTypes[idx]._id;
-      const res = await fetch(`https://api.partywalah.in/api/events/delete-event-type/${id}`, {
+      const res = await fetch(`https://api.partywalah.in/api/admin/event-type/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` },
       });

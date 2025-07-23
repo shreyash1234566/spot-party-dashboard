@@ -2,7 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import EventList from './pages/EventList';
 import EventView from './pages/EventView';
 import EventEdit from './pages/EventEdit';
-import CreateEvent from './pages/CreateEvent';
+import CreateEvent from './pages/EventCreate';
 import Users from './pages/Users';
 import Bookings from './pages/Bookings';
 import Vendors from './pages/Vendors';

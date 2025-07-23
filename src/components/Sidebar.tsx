@@ -12,7 +12,8 @@ import {
   ChevronRight, 
   BookOpen, 
   Building2, 
-  Store 
+  Store,
+  Palette 
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,15 @@ const menuItems = [
     submenu: [
       { icon: Plus, label: 'Create', path: '/events/create' },
       { icon: List, label: 'List', path: '/events/list' },
+    ],
+  },
+  {
+    icon: Palette,
+    label: 'Themes',
+    path: '/themes',
+    submenu: [
+      { icon: Plus, label: 'Create', path: '/themes/create' },
+      { icon: List, label: 'List', path: '/themes/list' },
     ],
   },
   { icon: CreditCard, label: 'Subscription', path: '/subscription' },
