@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import DashboardLayout from '../components/DashboardLayout';
 
 const EventView = () => {
   const { id } = useParams();
@@ -94,6 +95,7 @@ const EventView = () => {
 
   if (loading) {
     return (
+      
       <div className="p-8">
         <Card>
           <CardContent className="p-6">
@@ -108,6 +110,7 @@ const EventView = () => {
 
   if (error) {
     return (
+      
       <div className="p-8">
         <Card>
           <CardContent className="p-6">
@@ -152,6 +155,7 @@ const EventView = () => {
   }
 
   return (
+    <DashboardLayout>
     <div className="p-8 max-w-3xl mx-auto">
       <Card>
         <CardHeader>
@@ -160,62 +164,100 @@ const EventView = () => {
           <CardTitle className="text-2xl">{event.title}</CardTitle>
           <div className="text-sm text-gray-600">Type: {event.name?.name}</div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div><strong>Date:</strong> {event.startDate ? new Date(event.startDate).toLocaleString() : '-'}</div>
-          <div><strong>Location:</strong> {event.location || '-'}</div>
-          <div><strong>Price:</strong> {event.price ?? '-'}</div>
-          <div><strong>Number of Guests:</strong> {event.numberOfGuests ?? '-'}</div>
-          <div><strong>Tags:</strong> {Array.isArray(event.tags) && event.tags.length > 0 ?
-            event.tags.map((tag, i) => (
-              <span key={i} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1">
-                {tag}
-              </span>
-            )) : '-'}</div>
-          <div><strong>What's Included:</strong> {Array.isArray(event.whatsIncluded) && event.whatsIncluded.length > 0 ?
-            <ul className="list-disc ml-6">{event.whatsIncluded.map((item, i) => <li key={i}>{item}</li>)}</ul> : '-'}</div>
-
-          <div><strong>Hosted By:</strong> {event.hostedBy?.name ? `${event.hostedBy.name} (${event.hostedBy.location || '-'})` : '-'}
-            {event.hostedBy?.image && (
-              <div className="mt-2">
-                <img src={event.hostedBy.image} alt="Host" className="w-32 h-32 object-cover rounded shadow" />
-              </div>
-            )}
-          </div>
-
-          <div><strong>Partnered By:</strong> {event.partneredBy?.name ? `${event.partneredBy.name} (${event.partneredBy.location || '-'})` : '-'}
-            {event.partneredBy?.image && (
-              <div className="mt-2">
-                <img src={event.partneredBy.image} alt="Partner" className="w-32 h-32 object-cover rounded shadow" />
-              </div>
-            )}
-          </div>
-
-          <div>
-            <strong>Entry Requirements:</strong>
-            {Array.isArray(event.entryRequirements) && event.entryRequirements.length > 0 ? (
-              <ul className="list-disc ml-6">
-                {event.entryRequirements.map((req, i) => (
-                  <li key={i}>
-                    <span className="font-semibold">{req.title}:</span>
-                    {Array.isArray(req.data) && req.data.length > 0 ? (
-                      <ul className="list-disc ml-6 mt-1">
-                        {req.data.map((item, idx) => (
-                          <li key={idx}>{item}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <span className="ml-2 text-gray-600">No details</span>
-                    )}
-                  </li>
+       <CardContent className="space-y-4">
+  <div><strong>Image:</strong> {event.image ? <img src={event.image} alt="Event" className="w-48 h-32 object-cover rounded shadow" /> : '-'}</div>
+  <div><strong>Date:</strong> {event.startDate ? new Date(event.startDate).toLocaleString() : '-'}</div>
+  <div><strong>End Date:</strong> {event.endDate ? new Date(event.endDate).toLocaleString() : '-'}</div>
+  <div><strong>Location:</strong> {event.location || '-'}</div>
+  <div><strong>Price:</strong> {event.price ?? '-'}</div>
+  <div><strong>Number of Guests:</strong> {event.numberOfGuests ?? '-'}</div>
+  <div><strong>Tags:</strong> {Array.isArray(event.tags) && event.tags.length > 0 ?
+    event.tags.map((tag, i) => (
+      <span key={i} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1">
+        {tag}
+      </span>
+    )) : '-'}</div>
+  <div><strong>What's Included:</strong> {Array.isArray(event.whatsIncluded) && event.whatsIncluded.length > 0 ?
+    <ul className="list-disc ml-6">{event.whatsIncluded.map((item, i) => <li key={i}>{item}</li>)}</ul> : '-'}</div>
+  {/* <div><strong>Event Subtype:</strong> {Array.isArray(event.subType) && event.subType.length > 0 ?
+    event.subType.map((sub, i) => (
+      <span key={i} className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded mr-1">
+        {sub.name}
+      </span>
+    )) : '-'}</div>
+  <div><strong>Venue Type:</strong> {Array.isArray(event.venueType) && event.venueType.length > 0 ?
+    event.venueType.map((venue, i) => (
+      <span key={i} className="inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded mr-1">
+        {venue.name}
+      </span>
+    )) : '-'}</div>
+  <div><strong>Food Preferences:</strong> {Array.isArray(event.foodPreferences) && event.foodPreferences.length > 0 ?
+    event.foodPreferences.map((food, i) => (
+      <span key={i} className="inline-block bg-pink-100 text-pink-800 text-xs px-2 py-1 rounded mr-1">
+        {food.name}
+      </span>
+    )) : '-'}</div> */}
+   {/* <div><strong>Special Requirements:</strong> {event.specialRequirements || '-'}</div> */}
+  <div><strong>Notes:</strong> {event.notes || 'NA'}</div>
+ <div>
+  <strong>Theme(s):</strong>{' '}
+  {Array.isArray(event.themeIds) && event.themeIds.length > 0 ? (
+    event.themeIds.map((theme, i) => (
+      <span
+        key={i}
+        className="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded mr-1"
+      >
+        {/* This checks if 'theme' is an object with a name, otherwise it shows the raw data (the ID) */}
+        {typeof theme === 'object' && theme.name ? theme.name : String(theme)}
+      </span>
+    ))
+  ) : (
+    '-'
+  )}
+</div>
+  <div><strong>Hosted By:</strong> {event.hostedBy?.name ? `${event.hostedBy.name} (${event.hostedBy.location || '-'})` : '-'}
+    {event.hostedBy?.image && (
+      <div className="mt-2">
+        <img src={event.hostedBy.image} alt="Host" className="w-32 h-32 object-cover rounded shadow" />
+      </div>
+    )}
+  </div>
+  <div><strong>Partnered By:</strong> {event.partneredBy?.name ? `${event.partneredBy.name} (${event.partneredBy.location || '-'})` : '-'}
+    {event.partneredBy?.image && (
+      <div className="mt-2">
+        <img src={event.partneredBy.image} alt="Partner" className="w-32 h-32 object-cover rounded shadow" />
+      </div>
+    )}
+  </div>
+  <div>
+    <strong>Entry Requirements:</strong>
+    {Array.isArray(event.entryRequirements) && event.entryRequirements.length > 0 ? (
+      <ul className="list-disc ml-6">
+        {event.entryRequirements.map((req, i) => (
+          <li key={i}>
+            <span className="font-semibold">{req.title}:</span>
+            {Array.isArray(req.list) && req.list.length > 0 ? (
+              <ul className="list-disc ml-6 mt-1">
+                {req.list.map((item, idx) => (
+                  <li key={idx}>{item}</li>
                 ))}
               </ul>
+            ) : req.description ? (
+              <span className="ml-2 text-gray-600">{req.description}</span>
             ) : (
-              '-'
+              <span className="ml-2 text-gray-600">No details</span>
             )}
-          </div>
-        </CardContent>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      '-'
+    )}
+  </div>
+</CardContent>
       </Card>
     </div>
+    </DashboardLayout>
   );
 };
 
