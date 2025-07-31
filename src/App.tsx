@@ -28,8 +28,11 @@ import ThemeCreate from './pages/ThemeCreate';
 import ThemeView from './pages/ThemeView';
 import ThemeEdit from './pages/ThemeEdit';
 
-import { messaging } from "./firebase";
+import { messaging } from "./firebase-config";
 import { getToken, onMessage } from "firebase/messaging";
+import NotificationModule  from "./pages/NotificationCreate.tsx";
+import PastNotificationsList from "./pages/NotificationView.tsx";
+
 
 const queryClient = new QueryClient();
 
@@ -39,7 +42,7 @@ const requestNotificationPermission = async () => {
   if (permission === "granted") {
     try {
       const token = await getToken(messaging, {
-        vapidKey: "BPpWJf5JUC9SVOvTuNvu0C4db3_vqQz6CMy_3DV1OQzdB4s1R1mVEe9CroyQ7u48Aon_KpPsqOMT3kg69Y7s09c",
+        vapidKey: "BLqUMasple8GWDVCky6u5b1VaN_ewxd2JXyNcccgQhBcyw0cdcL2xGJcJhmNZKu7jBLYj4VTQzMbbNL9JtZ2gUo",
       });
       console.log("✅ FCM Token:", token);
       // Optional: Send token to your backend
@@ -95,6 +98,17 @@ const App = () => {
               <Route path="/themes/create" element={<ProtectedRoute><ThemeCreate /></ProtectedRoute>} />
               <Route path="/themes/edit/:id" element={<ProtectedRoute><ThemeEdit /></ProtectedRoute>} />
               <Route path="/themes/view/:id" element={<ProtectedRoute><ThemeView /></ProtectedRoute>} />
+              <Route
+  path="/notifications/create"
+  element={<ProtectedRoute><NotificationModule /></ProtectedRoute>}
+/>
+<Route
+  path="/notifications/list"
+  element={<ProtectedRoute><PastNotificationsList /></ProtectedRoute>}
+/>
+
+<Route path="*" element={<NotFound />} />
+
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
