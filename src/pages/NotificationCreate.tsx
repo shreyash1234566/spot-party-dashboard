@@ -4,6 +4,24 @@ import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
 import { Calendar, Send, X, CheckCircle, AlertCircle, Users, Loader2, RefreshCw } from 'lucide-react';
 
+// Define a type for the User object for better type safety
+type User = {
+  _id: string;
+  full_name?: string;
+  email?: string;
+  phone?: string | number;
+  userType: 'customer' | 'agent';
+  isDeleted: boolean;
+  deviceToken?: string;
+};
+
+// Define a type for the API response for better clarity
+type Result = {
+  type: 'success' | 'error';
+  message: string;
+  details?: any;
+};
+
 const NotificationSender = () => {
   // ============================================================================
   // State
@@ -15,18 +33,18 @@ const NotificationSender = () => {
     imageUrl: '',
     receiver: 'all',
     notificationType: 'normal',
-    selectedUsers: [], // Array of user IDs
+    selectedUsers: [] as string[],
     fcmTokens: ''
   });
 
-  const [users, setUsers] = useState([]);
-  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState(null);
-  const [result, setResult] = useState(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [result, setResult] = useState<Result | null>(null);
 
   // API Endpoints
   const FIREBASE_FUNCTION_URL = 'https://sendnotification-6j7qfbsfkq-uc.a.run.app';
@@ -39,7 +57,7 @@ const NotificationSender = () => {
   const fetchUsers = async () => {
     setIsLoadingUsers(true);
     try {
-      let allUsers = [];
+      let allUsers: User[] = [];
       let page = 1;
       let hasMorePages = true;
 
@@ -54,9 +72,8 @@ const NotificationSender = () => {
         const data = await response.json();
         const pageUsers = data.data?.data || [];
         
-        const customers = pageUsers.filter(user => 
-          user.userType === 'customer' && 
-          !user.isDeleted
+        const customers = pageUsers.filter((user: User) => 
+          user.userType === 'customer' && !user.isDeleted
         );
         
         allUsers = [...allUsers, ...customers];
@@ -66,7 +83,7 @@ const NotificationSender = () => {
 
       setUsers(allUsers);
       setFilteredUsers(allUsers);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching users:', error);
       setResult({ type: 'error', message: `Failed to fetch users: ${error.message}` });
     } finally {
@@ -95,7 +112,7 @@ const NotificationSender = () => {
     }
   }, [userSearchTerm, users]);
 
-  const handleUserSelection = (userId) => {
+  const handleUserSelection = (userId: string) => {
     setFormData(prev => ({
       ...prev,
       selectedUsers: prev.selectedUsers.includes(userId)
@@ -112,13 +129,13 @@ const NotificationSender = () => {
     return users
       .filter(user => selectedUserMap.has(user._id))
       .map(user => user.deviceToken)
-      .filter(token => token && typeof token === 'string' && token.trim() !== '' && token !== 'string');
+      .filter((token): token is string => !!token && typeof token === 'string' && token.trim() !== '' && token !== 'string');
   };
 
   // ============================================================================
   // Form Handlers
   // ============================================================================
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ 
       ...prev, 
@@ -127,7 +144,7 @@ const NotificationSender = () => {
     }));
   };
 
-  const handleImageUpload = async (file) => {
+  const handleImageUpload = async (file: File | null) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       setUploadError('Please select a valid image file.');
@@ -152,7 +169,7 @@ const NotificationSender = () => {
       const imageUrlFromServer = data?.url || data?.data?.url;
       if (!imageUrlFromServer) throw new Error('Image URL not found in the server response.');
       setFormData(prev => ({ ...prev, imageUrl: imageUrlFromServer }));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upload error:', error);
       setUploadError(error.message || 'Failed to upload image.');
     } finally {
@@ -172,71 +189,67 @@ const NotificationSender = () => {
     setResult(null);
 
     try {
+      // 1. Client-side validation
       if (!formData.title.trim() || !formData.body.trim() || !formData.date) {
         throw new Error('Title, Message, and Date are required.');
       }
 
-      let finalTokensArray = [];
+      // 2. Prepare FCM tokens based on the selected receiver type
+      let finalTokensArray: string[] = [];
       if (formData.receiver === 'specific') {
-        if (formData.selectedUsers.length === 0) {
-          throw new Error('Please select at least one user.');
-        }
+        if (formData.selectedUsers.length === 0) throw new Error('Please select at least one user.');
         finalTokensArray = getSelectedUsersTokens();
+        if (finalTokensArray.length === 0) throw new Error('The selected users do not have any valid device tokens.');
       } else if (formData.receiver === 'manual') {
-        const tokensArray = formData.fcmTokens.split('\n').map(t => t.trim()).filter(Boolean);
-        if (tokensArray.length === 0) {
-          throw new Error('Please provide at least one FCM token.');
-        }
-        finalTokensArray = tokensArray;
+        finalTokensArray = formData.fcmTokens.split('\n').map(t => t.trim()).filter(Boolean);
+        if (finalTokensArray.length === 0) throw new Error('Please provide at least one FCM token.');
       }
-
-      if (formData.receiver !== 'all' && finalTokensArray.length === 0) {
-        throw new Error('No valid FCM tokens found for the selected users.');
-      }
+      // For 'all' receiver, finalTokensArray will correctly be empty.
 
       const dateObj = new Date(formData.date);
-      if (isNaN(dateObj.getTime())) {
-        throw new Error('Please provide a valid date.');
-      }
+      if (isNaN(dateObj.getTime())) throw new Error('Please provide a valid date.');
 
+      // 3. Construct the payload that matches the Cloud Function's expectations
       const payload = {
         title: formData.title.trim(),
         body: formData.body.trim(),
         date: dateObj.toISOString(),
         receiver: formData.receiver,
         notificationType: formData.notificationType,
-        fcmTokens: finalTokensArray,
+        fcmTokens: finalTokensArray, // Will be empty for 'all', which is correct for your backend
         ...(formData.imageUrl && { imageUrl: encodeURI(formData.imageUrl) }),
       };
 
-      console.log('Sending payload:', {
-        ...payload,
-        fcmTokens: payload.fcmTokens.length > 0 ? `[${payload.fcmTokens.length} tokens]` : '(Sending to topic)'
-      });
+      console.log('Sending payload to Cloud Function:', payload);
 
+      // 4. Make the API call
       const response = await fetch(FIREBASE_FUNCTION_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify(payload)
       });
+      
+      const data = await response.json();
+      console.log('Parsed response from Cloud Function:', data);
 
-      let data;
-      const contentType = response.headers.get('content-type');
-      if (contentType?.includes('application/json')) {
-        data = await response.json();
-      } else {
-        const textResponse = await response.text();
-        console.error('Non-JSON response:', textResponse);
-        throw new Error(`Server returned non-JSON response. Status: ${response.status}`);
-      }
-
-      console.log('Response:', data);
+      // 5. Handle responses robustly, checking both HTTP status and the 'success' flag
       if (!response.ok || data.success === false) {
-        throw new Error(data.details?.join(', ') || data.error || `Server error: ${response.status}`);
+        // Create a more informative error message from the server response
+        const errorMessage = Array.isArray(data?.details)
+          ? data.details.join(', ') // For validation errors
+          : data?.error || data?.message || `Server responded with status: ${response.status}`;
+          
+        const serverError = {
+          message: errorMessage,
+          details: data?.details || data || null, // Pass the full details object for display
+        };
+        throw serverError;
       }
 
+      // 6. Handle a successful response
       setResult({ type: 'success', message: data.message || 'Notification processed!', details: data.details });
       
+      // Reset the form to its initial state
       setFormData({
         title: '', body: '', date: new Date().toISOString().split('T')[0],
         imageUrl: '', receiver: 'all', notificationType: 'normal', 
@@ -244,9 +257,20 @@ const NotificationSender = () => {
       });
       clearImage();
 
-    } catch (error) {
-      console.error('Error sending notification:', error);
-      setResult({ type: 'error', message: error.message || 'An unexpected error occurred.' });
+    } catch (error: any) {
+      console.error('Error in handleSubmit:', error);
+
+      let errorMessage = 'An unexpected error occurred.';
+      let errorDetails = null;
+
+      if (error instanceof Error) { // Catches network errors, client-side validation, etc.
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null && 'message' in error) { // Catches our custom server error object
+        errorMessage = error.message;
+        if ('details' in error) errorDetails = error.details;
+      }
+      
+      setResult({ type: 'error', message: errorMessage, details: errorDetails });
     } finally {
       setIsSending(false);
     }
@@ -255,7 +279,7 @@ const NotificationSender = () => {
   const clearResult = () => setResult(null);
 
   const getTokenCount = () => {
-    if (formData.receiver === 'all') return users.length;
+    if (formData.receiver === 'all') return users.length; // For 'all', we target the total number of users
     if (formData.receiver === 'specific') return formData.selectedUsers.length;
     if (formData.receiver === 'manual') return formData.fcmTokens.split('\n').map(t => t.trim()).filter(Boolean).length;
     return 0;
@@ -301,21 +325,28 @@ const NotificationSender = () => {
                         <AlertCircle className="w-6 h-6 text-red-600" />
                       )}
                     </div>
-                    <div>
-                      <p className={`font-semibold text-lg ${ 
+                    <div className="flex-1">
+                      <p className={`font-semibold text-lg break-words ${ 
                         result.type === 'success' ? 'text-green-800' : 'text-red-800' 
                       }`}>
                         {result.message}
                       </p>
                       {result.details && (
-                        <div className="mt-2 text-sm text-gray-600">
-                          {typeof result.details === 'object' ? (
-                            <pre className="whitespace-pre-wrap bg-gray-100 p-2 rounded">
-                              {JSON.stringify(result.details, null, 2)}
-                            </pre>
-                          ) : (
-                            <p>{result.details}</p>
-                          )}
+                        <div className="mt-3 text-sm text-gray-700">
+                          <details className="cursor-pointer">
+                            <summary className="font-medium text-gray-600 hover:text-gray-800">
+                              View Details
+                            </summary>
+                            <div className="mt-2 p-3 bg-gray-100 rounded border max-h-64 overflow-auto">
+                              {typeof result.details === 'object' ? (
+                                <pre className="whitespace-pre-wrap text-xs">
+                                  {JSON.stringify(result.details, null, 2)}
+                                </pre>
+                              ) : (
+                                <p className="text-sm">{result.details}</p>
+                              )}
+                            </div>
+                          </details>
                         </div>
                       )}
                     </div>
@@ -330,16 +361,20 @@ const NotificationSender = () => {
               </div>
             )}
             
+            {/* The rest of your JSX form remains the same... */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Left Column */}
               <div className="space-y-6">
+                {/* Message Content */}
                 <div className="bg-gray-50 rounded-xl p-6 border">
                   <h3 className="text-lg font-semibold text-gray-800 mb-4">Message Content</h3>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
                         Title <span className="text-red-500">*</span>
                       </label>
                       <input 
+                        id="title"
                         type="text" 
                         name="title" 
                         value={formData.title} 
@@ -354,10 +389,11 @@ const NotificationSender = () => {
                       </p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor="body" className="block text-sm font-medium text-gray-700 mb-1">
                         Message <span className="text-red-500">*</span>
                       </label>
                       <textarea 
+                        id="body"
                         name="body" 
                         value={formData.body} 
                         onChange={handleInputChange} 
@@ -374,6 +410,7 @@ const NotificationSender = () => {
                   </div>
                 </div>
                 
+                {/* Target Users */}
                 <div className="bg-gray-50 rounded-xl p-6 border">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
@@ -389,20 +426,20 @@ const NotificationSender = () => {
                       <RefreshCw size={16} className={isLoadingUsers ? 'animate-spin' : ''} />
                     </button>
                   </div>
-
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="receiver" className="block text-sm font-medium text-gray-700 mb-2">
                         Receiver Type <span className="text-red-500">*</span>
                       </label>
                       <select 
+                        id="receiver"
                         name="receiver" 
                         value={formData.receiver} 
                         onChange={handleInputChange} 
                         required 
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
-                        <option value="all">All Customers ({users.length})</option>
+                        <option value="all">All Customers</option>
                         <option value="specific">Specific Users</option>
                         <option value="manual">Manual FCM Tokens</option>
                       </select>
@@ -431,7 +468,6 @@ const NotificationSender = () => {
                             </button>
                           </div>
                         </div>
-                        
                         <input
                           type="text"
                           placeholder="Search users by name, email, or phone..."
@@ -439,7 +475,6 @@ const NotificationSender = () => {
                           onChange={(e) => setUserSearchTerm(e.target.value)}
                           className="w-full px-3 py-2 mb-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
-
                         <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-lg">
                           {isLoadingUsers ? (
                             <div className="flex items-center justify-center p-4">
@@ -483,10 +518,11 @@ const NotificationSender = () => {
 
                     {formData.receiver === 'manual' && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label htmlFor="fcmTokens" className="block text-sm font-medium text-gray-700 mb-1">
                           FCM Tokens (one per line) <span className="text-red-500">*</span>
                         </label>
                         <textarea 
+                          id="fcmTokens"
                           name="fcmTokens" 
                           value={formData.fcmTokens} 
                           onChange={handleInputChange} 
@@ -505,14 +541,17 @@ dK7j3N8mP2f...
                 </div>
               </div>
               
+              {/* Right Column */}
               <div className="space-y-6">
+                {/* Settings */}
                 <div className="bg-gray-50 rounded-xl p-6 border">
                   <h3 className="text-lg font-semibold text-gray-800 mb-4">Settings</h3>
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                        <label htmlFor="notificationType" className="block text-sm font-medium text-gray-700 mb-1">Type</label>
                         <select 
+                          id="notificationType"
                           name="notificationType" 
                           value={formData.notificationType} 
                           onChange={handleInputChange} 
@@ -524,11 +563,12 @@ dK7j3N8mP2f...
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
                           Internal Date <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
                           <input 
+                            id="date"
                             type="date" 
                             name="date" 
                             value={formData.date} 
@@ -546,6 +586,7 @@ dK7j3N8mP2f...
                   </div>
                 </div>
                 
+                {/* Image Upload */}
                 <div className="bg-gray-50 rounded-xl p-6 border">
                   <h3 className="text-lg font-semibold text-gray-800 mb-4">
                     Notification Image (Optional)
@@ -597,6 +638,7 @@ dK7j3N8mP2f...
                   )}
                 </div>
                 
+                {/* Submit Button */}
                 <div className="pt-2">
                   <button 
                     onClick={handleSubmit} 
@@ -606,27 +648,26 @@ dK7j3N8mP2f...
                       !formData.title.trim() || 
                       !formData.body.trim() || 
                       !formData.date ||
-                      tokenCount === 0
+                      (formData.receiver !== 'all' && tokenCount === 0)
                     } 
                     className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all duration-200"
                   >
                     {isSending ? (
                       <>
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        Sending to {tokenCount} users...
+                        Sending...
                       </>
                     ) : (
                       <>
                         <Send size={20} />
-                        Send to {tokenCount} Users
+                        Send to {formData.receiver === 'all' ? 'All' : tokenCount} Users
                       </>
                     )}
                   </button>
-                  
                   <div className="mt-2 text-xs text-gray-500 text-center">
                     {!formData.title.trim() && <p>• Title is required</p>}
                     {!formData.body.trim() && <p>• Message is required</p>}
-                    {tokenCount === 0 && <p>• At least one target user is required</p>}
+                    {formData.receiver !== 'all' && tokenCount === 0 && <p>• At least one target user/token is required</p>}
                   </div>
                 </div>
               </div>
@@ -634,7 +675,6 @@ dK7j3N8mP2f...
           </div>
         </div>
       </div>
-       {/* All JSX code remains the same as before */}
     </DashboardLayout>
   );
 };
