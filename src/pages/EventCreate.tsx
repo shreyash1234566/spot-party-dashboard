@@ -41,6 +41,7 @@ const CreateEvent = () => {
     partnerLocation: '',
     eventType: '',
     eventSubType: '',
+    theme: '', 
     whatsIncluded: [''],
     tags: [] as string[],
     venueType: '',
@@ -87,7 +88,12 @@ const CreateEvent = () => {
     entryRequirements: true,
   });
 
-  // Metadata state
+  // --- UPDATED: Metadata state with Theme ---
+  interface ThemeMeta {
+    _id: string;
+    name: string;
+    description: string;
+  }
   interface EventTypeMeta {
     _id: string;
     name: string;
@@ -98,8 +104,11 @@ const CreateEvent = () => {
     parent: string;
   }
   interface EventMeta {
+    venues: any[];
+    foodPrefs: any[];
     eventType: EventTypeMeta[];
     eventSubType: EventSubTypeMeta[];
+    theme: ThemeMeta[];
   }
 
   const [meta, setMeta] = useState<EventMeta | null>(null);
@@ -244,7 +253,7 @@ const CreateEvent = () => {
   };
 
   // ============================================
-  // Form submission (WITH CLEARER LOGS)
+  // Form submission (WITH CORRECTED PAYLOAD)
   // ============================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -294,6 +303,7 @@ const CreateEvent = () => {
         }
       });
 
+      // --- CORRECTED PAYLOAD ---
       const apiData: any = {
         name: {
           id: formData.eventType,
@@ -311,11 +321,13 @@ const CreateEvent = () => {
         foodPreferences: foodPreferences.length > 0 ? foodPreferences : undefined,
         specialRequirements: formData.specialRequirements || undefined,
         
-        // --- Fields moved for clarity ---
         title: formData.name,
         image: formData.eventImageUrl || undefined,
         description: formData.description || undefined,
-        // ---------------------------------
+        
+        // --- THIS IS THE FIX ---
+        themeIds: formData.theme ? [formData.theme] : [],
+        // -----------------------
         
         price: formData.price ? parseFloat(formData.price) : undefined,
         location: formData.location || undefined,
@@ -337,19 +349,16 @@ const CreateEvent = () => {
         entryRequirements: entryReqPayload.length > 0 ? entryReqPayload : undefined,
       };
 
-      // ==========================================================
-      // NEW: Distinct and clear console logs for debugging
-      // ==========================================================
       console.groupCollapsed('🚀 Sending Data to API...');
       console.log('Event Title:', apiData.title);
-      console.log('✅ Main Event Image URL:', apiData.image); // The proof is here
+      console.log('✅ Main Event Image URL:', apiData.image);
+      console.log('🎨 Theme IDs:', apiData.themeIds);
       console.log('Host Info:', apiData.hostedBy);
       console.log('Partner Info:', apiData.partneredBy);
       console.log('Entry Requirements:', apiData.entryRequirements);
       console.log('--- Full Payload Below ---');
-      console.log(apiData);
+      console.log(JSON.stringify(apiData, null, 2));
       console.groupEnd();
-      // ==========================================================
 
       const { apiFetch } = await import('../lib/api');
       const response = await apiFetch('https://api.partywalah.in/api/admin/events', {
@@ -393,7 +402,7 @@ const CreateEvent = () => {
           return res.json();
         })
         .then((data) => {
-          console.log('Event type metadata:', data);
+          console.log('Event metadata:', data);
           setMeta(data as EventMeta);
         })
         .catch(err => console.error('Failed to fetch metadata:', err));
@@ -401,7 +410,7 @@ const CreateEvent = () => {
   }, []);
 
   // ============================================================================
-  // JSX Rendering (WITH REORDERED SECTIONS)
+  // JSX Rendering
   // ============================================================================
   return (
     <DashboardLayout>
@@ -484,6 +493,39 @@ const CreateEvent = () => {
               </CardContent>
             )}
           </Card>
+
+          {/* Theme Section */}
+          <Card>
+            <CardHeader>
+                <CardTitle>Event Theme</CardTitle>
+                <CardDescription>Select a theme for your event (optional).</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Label htmlFor="theme">Theme</Label>
+                {meta && meta.theme ? (
+                <Select
+                    value={formData.theme}
+                    onValueChange={value => handleInputChange('theme', value)}
+                >
+                    <SelectTrigger className="w-full h-11">
+                    <SelectValue placeholder="Select a theme" />
+                    </SelectTrigger>
+                    <SelectContent>
+                    {meta.theme.map((theme) => (
+                        <SelectItem key={theme._id} value={theme._id}>{theme.name}</SelectItem>
+                    ))}
+                    </SelectContent>
+                </Select>
+                ) : (
+                <Select disabled>
+                    <SelectTrigger className="w-full h-11">
+                    <SelectValue placeholder="Loading themes..." />
+                    </SelectTrigger>
+                </Select>
+                )}
+            </CardContent>
+          </Card>
+
 
           {/* Basic Event Details Section */}
           <Card>
@@ -598,9 +640,6 @@ const CreateEvent = () => {
             )}
           </Card>
           
-          {/* ======================================================== */}
-          {/* NEW: Event Image Section moved here for clarity */}
-          {/* ======================================================== */}
           <Card>
             <CardHeader>
               <CardTitle>Event Image</CardTitle>
@@ -635,7 +674,6 @@ const CreateEvent = () => {
             </CardContent>
           </Card>
           
-          {/* Tags Section */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -700,7 +738,6 @@ const CreateEvent = () => {
             )}
           </Card>
 
-          {/* Host Information Section */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -749,7 +786,6 @@ const CreateEvent = () => {
             )}
           </Card>
 
-          {/* Partner Information Section */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -798,7 +834,6 @@ const CreateEvent = () => {
             )}
           </Card>
 
-          {/* What's Included Section */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -843,7 +878,6 @@ const CreateEvent = () => {
             )}
           </Card>
 
-          {/* Entry Requirements Section */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -1006,6 +1040,7 @@ const CreateEvent = () => {
                   partnerLocation: '',
                   eventType: '',
                   eventSubType: '',
+                  theme: '', 
                   whatsIncluded: [''],
                   tags: [],
                   venueType: '',

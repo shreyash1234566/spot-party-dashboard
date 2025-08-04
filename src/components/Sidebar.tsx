@@ -13,7 +13,8 @@ import {
   BookOpen, 
   Building2, 
   Store,
-  Palette 
+  Palette,
+  Bell
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,16 @@ const menuItems = [
   { icon: BookOpen, label: 'Bookings', path: '/bookings' },
   { icon: Store, label: 'Vendors', path: '/vendors' },
   { icon: Building2, label: 'Venues', path: '/venues' },
+ 
+   {
+    icon: Bell,
+    label: 'Notifications',
+    path: '/notifications',
+    submenu: [
+      { icon: Plus, label: 'Create', path: '/notifications/create' },
+      { icon: List, label: 'List', path: '/notifications/list' },
+    ],
+  },
 ];
 
 const Sidebar = () => {

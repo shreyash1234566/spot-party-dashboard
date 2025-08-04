@@ -24,7 +24,7 @@ interface User {
   full_name: string | null;
   email: string | null;
   phone: number;
-  userType: 'customer' | 'manager' | 'admin';
+  userType: 'customer' | 'agent' | 'admin';
   createdAt: string;
 }
 

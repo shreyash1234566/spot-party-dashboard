@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "part-sport",
+    "prod": "fir-demo-project"
+  },
+  "targets": {},
+  "etags": {}
+}
