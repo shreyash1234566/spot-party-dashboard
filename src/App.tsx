@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -41,50 +40,13 @@ import DescriptionList from "./pages/DescriptionList.tsx";
 import DescriptionView from "./pages/DesciptionView.tsx"; // Fixed typo: DesceiptionView -> DescriptionView
 import DescriptionEdit from "./pages/DescriptionEdit.tsx";
 import CarouselCreate from "./pages/CarouselCreate.tsx";
-import CarouselList from "./pages/CarouselList.tsx";   // Added for Carousel CRUD
-
-  // Added for Carousel CRUD
-
-import { messaging } from "./firebase-config";
-import { getToken, onMessage } from "firebase/messaging";
+import CarouselList from "./pages/CarouselList.tsx";
 import NotificationModule from "./pages/NotificationCreate.tsx";
 import PastNotificationsList from "./pages/NotificationView.tsx";
 
 const queryClient = new QueryClient();
 
-// 🔔 Request Notification Permission + Handle Foreground Messages
-const requestNotificationPermission = async () => {
-  const permission = await Notification.requestPermission();
-  if (permission === "granted") {
-    try {
-      const token = await getToken(messaging, {
-        vapidKey: "BLqUMasple8GWDVCky6u5b1VaN_ewxd2JXyNcccgQhBcyw0cdcL2xGJcJhmNZKu7jBLYj4VTQzMbbNL9JtZ2gUo",
-      });
-      console.log("✅ FCM Token:", token);
-      // Optional: Send token to your backend
-    } catch (err) {
-      console.error("🚫 FCM Token Error:", err);
-    }
-  } else {
-    console.warn("🔕 Notifications not permitted");
-  }
-};
-
 const App = () => {
-  useEffect(() => {
-    requestNotificationPermission();
-
-    onMessage(messaging, (payload) => {
-      console.log("📥 Foreground message received:", payload);
-      const { title, body, image } = payload.notification || {};
-      if (title && body) {
-        new Notification(title, {
-          body,
-          icon: image || "/favicon.ico", // default fallback icon
-        });
-      }
-    });
-  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -111,7 +111,12 @@ const menuItems = [
 ];
 
 
-const Sidebar = () => {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const location = useLocation();
   const { logout, user } = useAuth();
@@ -141,36 +146,17 @@ const Sidebar = () => {
     return location.pathname === path;
   };
 
-  return (
-    <aside className={`bg-white border-r border-gray-200 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'} flex flex-col flex-shrink-0`}>
-      <div className="flex items-center p-4 border-b border-gray-200" style={{ height: '65px' }}>
-          {!isCollapsed && (
-            <div className="flex items-center space-x-2 flex-grow">
-              <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Calendar className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-bold text-xl text-gray-800">EventAdmin</span>
-            </div>
-          )}
-           {isCollapsed && (
-            <div className="flex items-center justify-center flex-grow">
-                <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Calendar className="w-5 h-5 text-white" />
-                </div>
-            </div>
-          )}
+  // Handle navigation item clicks on mobile
+  const handleNavigationClick = () => {
+    // Close sidebar on mobile after navigation
+    if (window.innerWidth < 768 && onClose) {
+      onClose();
+    }
+  };
 
-          {/* --- Improved Toggle Button --- */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="text-gray-600 hover:text-gray-800 flex-shrink-0"
-          >
-            {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-          </Button>
-      </div>
-
+  // Shared navigation content for both mobile and desktop
+  const NavigationContent = () => (
+    <>
       <nav className="mt-4 px-2 flex-1 overflow-y-auto">
         {menuItems.map((item) => (
           <div key={item.label} className="mb-1">
@@ -179,28 +165,28 @@ const Sidebar = () => {
                 <button
                   onClick={() => handleMenuToggle(item.label)}
                   className={`w-full flex items-center px-3 py-2.5 text-sm font-medium text-left rounded-lg transition-colors duration-200 ${
-                    isCollapsed ? 'justify-center' : ''
+                    isCollapsed && window.innerWidth >= 768 ? 'justify-center' : ''
                   } ${
                     isParentActive(item)
                       ? 'bg-indigo-50 text-indigo-700'
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
-                  <item.icon className={`w-5 h-5 flex-shrink-0 ${isCollapsed ? '' : 'mr-3'}`} />
-                  {!isCollapsed && (
+                  <item.icon className={`w-5 h-5 flex-shrink-0 ${(isCollapsed && window.innerWidth >= 768) ? '' : 'mr-3'}`} />
+                  {(!isCollapsed || window.innerWidth < 768) && (
                     <>
                       <span className="flex-1">{item.label}</span>
-                      {/* --- More Intuitive Chevron Icons --- */}
                       {expandedMenu === item.label ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                     </>
                   )}
                 </button>
-                {!isCollapsed && expandedMenu === item.label && (
+                {(!isCollapsed || window.innerWidth < 768) && expandedMenu === item.label && (
                   <div className="ml-4 pl-4 border-l border-gray-200 mt-2 space-y-1">
                     {item.submenu.map((subItem) => (
                       <Link
                         key={subItem.path}
                         to={subItem.path}
+                        onClick={handleNavigationClick}
                         className={`flex items-center px-3 py-2 text-sm rounded-lg transition-colors duration-200 w-full ${
                           isSubmenuActive(subItem.path)
                             ? 'bg-indigo-100 text-indigo-800 font-semibold'
@@ -217,16 +203,17 @@ const Sidebar = () => {
             ) : (
               <Link
                 to={item.path}
+                onClick={handleNavigationClick}
                 className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                    isCollapsed ? 'justify-center' : ''
-                  } ${
+                  (isCollapsed && window.innerWidth >= 768) ? 'justify-center' : ''
+                } ${
                   isParentActive(item)
                     ? 'bg-indigo-50 text-indigo-700'
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
-                <item.icon className={`w-5 h-5 flex-shrink-0 ${isCollapsed ? '' : 'mr-3'}`} />
-                {!isCollapsed && <span>{item.label}</span>}
+                <item.icon className={`w-5 h-5 flex-shrink-0 ${(isCollapsed && window.innerWidth >= 768) ? '' : 'mr-3'}`} />
+                {(!isCollapsed || window.innerWidth < 768) && <span>{item.label}</span>}
               </Link>
             )}
           </div>
@@ -234,7 +221,7 @@ const Sidebar = () => {
       </nav>
 
       <div className="p-3 border-t border-gray-200">
-        {!isCollapsed && (
+        {(!isCollapsed || window.innerWidth < 768) && (
           <div className="mb-2 p-2 bg-gray-100 rounded-lg">
             <p className="text-sm font-semibold text-gray-900 truncate">{user?.name || 'Admin User'}</p>
             <p className="text-xs text-gray-500 truncate">{user?.email || 'admin@example.com'}</p>
@@ -243,13 +230,67 @@ const Sidebar = () => {
         <Button
           onClick={logout}
           variant="ghost"
-          className={`w-full text-red-600 hover:text-red-700 hover:bg-red-50 ${isCollapsed ? 'justify-center' : 'justify-start'}`}
+          className={`w-full text-red-600 hover:text-red-700 hover:bg-red-50 ${(isCollapsed && window.innerWidth >= 768) ? 'justify-center' : 'justify-start'}`}
         >
-          <LogOut className={`w-4 h-4 flex-shrink-0 ${isCollapsed ? '' : 'mr-2'}`} />
-          {!isCollapsed && <span>Logout</span>}
+          <LogOut className={`w-4 h-4 flex-shrink-0 ${(isCollapsed && window.innerWidth >= 768) ? '' : 'mr-2'}`} />
+          {(!isCollapsed || window.innerWidth < 768) && <span>Logout</span>}
         </Button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar - Always visible on md and up */}
+      <aside className={`hidden md:flex bg-white border-r border-gray-200 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'} flex-col flex-shrink-0 fixed h-full z-20`}>
+        <div className="flex items-center p-4 border-b border-gray-200" style={{ height: '65px' }}>
+          {!isCollapsed && (
+            <div className="flex items-center space-x-2 flex-grow">
+              <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Calendar className="w-5 h-5 text-white" />
+              </div>
+              <span className="font-bold text-xl text-gray-800">EventAdmin</span>
+            </div>
+          )}
+          {isCollapsed && (
+            <div className="flex items-center justify-center flex-grow">
+              <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Calendar className="w-5 h-5 text-white" />
+              </div>
+            </div>
+          )}
+
+          {/* Desktop Toggle Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="text-gray-600 hover:text-gray-800 flex-shrink-0"
+          >
+            {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </Button>
+        </div>
+        <NavigationContent />
+      </aside>
+
+      {/* Mobile Sidebar - Slide-in drawer */}
+      <aside 
+        className={`
+          md:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transform transition-transform duration-300 ease-in-out
+          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+      >
+        <div className="flex items-center p-4 border-b border-gray-200" style={{ height: '65px' }}>
+          <div className="flex items-center space-x-2 flex-grow">
+            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Calendar className="w-5 h-5 text-white" />
+            </div>
+            <span className="font-bold text-xl text-gray-800">EventAdmin</span>
+          </div>
+        </div>
+        <NavigationContent />
+      </aside>
+    </>
   );
 };
 

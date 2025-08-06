@@ -1,7 +1,7 @@
 // src/components/PastNotificationsList.tsx
 
 import React, { useState, useEffect } from "react";
-import { messaging } from "@/firebase-config"; // Assuming your firebase setup is in @/firebase
+
 import { onMessage } from "firebase/messaging";
 import { format } from "date-fns";
 import DashboardLayout from '../components/DashboardLayout';
