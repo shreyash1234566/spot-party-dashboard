@@ -1,7 +1,7 @@
 // ============================================================================
 // Imports
 // ============================================================================
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -69,7 +69,6 @@ const useDebounce = (value: string, delay: number) => {
   return debouncedValue;
 };
 
-
 // ============================================================================
 // Component
 // ============================================================================
@@ -79,21 +78,50 @@ const Users = () => {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // State
-  const [users, setUsers] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('customer');
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalUsers, setTotalUsers] = useState(0);
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // ============================================================================
-  // fetchUsers with proper role filtering and search
+  // Client-side filtering and pagination using useMemo
   // ============================================================================
-  const fetchUsers = useCallback(async () => {
+  const { users, totalPages, totalUsers } = useMemo(() => {
+    // Filter by role first
+    const roleFiltered = allUsers.filter(user => user.userType === activeTab);
+    
+    // Then filter by search term
+    const searchFiltered = roleFiltered.filter(user => {
+      if (!debouncedSearchTerm.trim()) return true;
+      
+      const searchLower = debouncedSearchTerm.toLowerCase();
+      const nameMatch = user.full_name?.toLowerCase().includes(searchLower) || false;
+      const emailMatch = user.email?.toLowerCase().includes(searchLower) || false;
+      const phoneMatch = user.phone?.toString().includes(debouncedSearchTerm) || false;
+      
+      return nameMatch || emailMatch || phoneMatch;
+    });
+
+    // Calculate pagination
+    const totalFiltered = searchFiltered.length;
+    const totalPagesCalc = Math.ceil(totalFiltered / limit);
+    const paginatedUsers = searchFiltered.slice((page - 1) * limit, page * limit);
+
+    return {
+      users: paginatedUsers,
+      totalPages: totalPagesCalc,
+      totalUsers: totalFiltered
+    };
+  }, [allUsers, activeTab, debouncedSearchTerm, page, limit]);
+
+  // ============================================================================
+  // fetchAllUsers - fetch all users at once
+  // ============================================================================
+  const fetchAllUsers = useCallback(async () => {
     // Cancel previous request if it exists
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -102,18 +130,9 @@ const Users = () => {
     abortControllerRef.current = new AbortController();
     setLoading(true);
 
-    const url = new URL('https://api.partywalah.in/api/admin/users');
-    url.searchParams.append('page', String(page));
-    url.searchParams.append('limit', String(limit));
-    url.searchParams.append('role', activeTab);
-    
-    // Add search parameter if exists
-    if (debouncedSearchTerm.trim()) {
-      url.searchParams.append('search', debouncedSearchTerm.trim());
-    }
-
     try {
-      const response = await fetch(url.toString(), {
+      // Fetch all users without pagination or filtering
+      const response = await fetch('https://api.partywalah.in/api/admin/users?limit=1000', {
         headers: {
           'accept': 'application/json',
           'Authorization': `Bearer ${token}`,
@@ -129,15 +148,9 @@ const Users = () => {
       const data: ApiResponse = await response.json();
       
       if (data && data.data && Array.isArray(data.data.data)) {
-        // The API should ideally return filtered data, but we can double-check here
-        const fetchedUsers = data.data.data.filter(user => user.userType === activeTab);
-        setUsers(fetchedUsers);
-        setTotalPages(data.data.totalPages || 1);
-        setTotalUsers(data.data.totalUsers || 0);
+        setAllUsers(data.data.data);
       } else {
-        setUsers([]);
-        setTotalPages(1);
-        setTotalUsers(0);
+        setAllUsers([]);
       }
     } catch (error: any) {
       if (error.name === 'AbortError') {
@@ -145,40 +158,32 @@ const Users = () => {
         return; // Don't update state for aborted requests
       }
       console.error("Failed to fetch users:", error);
-      setUsers([]);
-      setTotalPages(1);
-      setTotalUsers(0);
+      setAllUsers([]);
     } finally {
       setLoading(false);
     }
-  }, [token, page, limit, activeTab, debouncedSearchTerm]);
+  }, [token]);
 
   // ============================================================================
-  // Effects with proper cleanup and debouncing
+  // Effects
   // ============================================================================
 
   // Reset page when tab or search changes
   useEffect(() => {
-    if (page !== 1) {
-      setPage(1);
-    }
-    setUsers([]); // Clear users immediately
-    setLoading(true); // Show loading state
-    setTotalUsers(0);
-    setTotalPages(1);
+    setPage(1);
   }, [debouncedSearchTerm, activeTab]);
 
-  // Fetch users when dependencies change
+  // Fetch all users on component mount
   useEffect(() => {
-    fetchUsers();
+    fetchAllUsers();
 
-    // Cleanup function to abort fetch on component unmount or dependency change
+    // Cleanup function to abort fetch on component unmount
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
     };
-  }, [fetchUsers]);
+  }, [fetchAllUsers]);
 
   // ============================================================================
   // Helper functions
@@ -201,8 +206,7 @@ const Users = () => {
         }
       });
       if (response.ok) {
-        setUsers(prevUsers => prevUsers.filter(u => u._id !== userId));
-        setTotalUsers(prev => prev - 1);
+        setAllUsers(prevUsers => prevUsers.filter(u => u._id !== userId));
         alert('User deleted successfully.');
       } else {
         alert('Failed to delete user.');
@@ -229,7 +233,7 @@ const Users = () => {
       });
 
       if (response.ok) {
-        setUsers(prevUsers => prevUsers.map(u => 
+        setAllUsers(prevUsers => prevUsers.map(u => 
           u._id === userId ? { ...u, isBlocked: !isCurrentlyBlocked } : u
         ));
         alert(`User ${action}ed successfully.`);
@@ -281,7 +285,7 @@ const Users = () => {
               
               <div className="relative w-full sm:w-80">
                 <Input
-                  placeholder={`Search ${activeTab}s by name, email...`}
+                  placeholder={`Search ${activeTab}s by name, email, phone...`}
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   className="pr-10"
@@ -316,7 +320,7 @@ const Users = () => {
                     <TableCell colSpan={4} className="h-24 text-center">
                       <div className="flex items-center justify-center gap-2">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
-                        Loading {activeTab}s...
+                        Loading users...
                       </div>
                     </TableCell>
                   </TableRow>
