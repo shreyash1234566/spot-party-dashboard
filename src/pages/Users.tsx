@@ -1,7 +1,7 @@
 // ============================================================================
 // Imports
 // ============================================================================
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -27,7 +27,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { MoreHorizontal, Edit, Trash2, Ban, Bug } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Ban, Users as UsersIcon, Shield, UserCheck } from 'lucide-react';
 
 // ============================================================================
 // Interfaces & Constants
@@ -44,10 +44,20 @@ interface User {
   createdAt: string;
 }
 
+interface ApiResponse {
+  success: boolean;
+  data: {
+    data: User[];
+    totalPages: number;
+    currentPage: number;
+    totalUsers: number;
+  };
+}
+
 const roleTabs = [
-  { label: 'Customers', value: 'customer' },
-  { label: 'Agents', value: 'agent' },
-  { label: 'Admins', value: 'admin' },
+  { label: 'Customers', value: 'customer', icon: UsersIcon },
+  { label: 'Agents', value: 'agent', icon: UserCheck },
+  { label: 'Admins', value: 'admin', icon: Shield },
 ];
 
 const useDebounce = (value: string, delay: number) => {
@@ -60,60 +70,6 @@ const useDebounce = (value: string, delay: number) => {
 };
 
 // ============================================================================
-// Debug Component
-// ============================================================================
-const DebugInfo = ({ 
-  activeTab, 
-  searchTerm, 
-  debouncedSearchTerm, 
-  page, 
-  loading, 
-  users, 
-  totalPages, 
-  apiCallCount, 
-  lastApiCall,
-  showDebug 
-}: {
-  activeTab: string;
-  searchTerm: string;
-  debouncedSearchTerm: string;
-  page: number;
-  loading: boolean;
-  users: User[];
-  totalPages: number;
-  apiCallCount: number;
-  lastApiCall: string;
-  showDebug: boolean;
-}) => {
-  if (!showDebug) return null;
-
-  return (
-    <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-4 text-sm font-mono">
-      <div className="flex items-center gap-2 mb-2">
-        <Bug className="h-4 w-4 text-yellow-600" />
-        <h3 className="font-bold text-yellow-800">Debug Information</h3>
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
-        <div><strong>Active Tab:</strong> {activeTab}</div>
-        <div><strong>Search Term:</strong> "{searchTerm}"</div>
-        <div><strong>Debounced Search:</strong> "{debouncedSearchTerm}"</div>
-        <div><strong>Page:</strong> {page}</div>
-        <div><strong>Loading:</strong> {loading.toString()}</div>
-        <div><strong>Users Count:</strong> {users.length}</div>
-        <div><strong>Total Pages:</strong> {totalPages}</div>
-        <div><strong>API Calls:</strong> {apiCallCount}</div>
-        <div className="col-span-2"><strong>Last API Call:</strong> {lastApiCall}</div>
-        {users.length > 0 && (
-          <div className="col-span-full">
-            <strong>User IDs:</strong> {users.map(u => u._id.slice(-6)).join(', ')}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// ============================================================================
 // Component
 // ============================================================================
 const Users = () => {
@@ -122,54 +78,65 @@ const Users = () => {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // State
-  const [users, setUsers] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('customer');
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
-  const [showDebug, setShowDebug] = useState(false);
-  
-  // Debug state
-  const [apiCallCount, setApiCallCount] = useState(0);
-  const [lastApiCall, setLastApiCall] = useState('');
 
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // ============================================================================
-  // IMPROVED fetchUsers with race condition prevention and better error handling
+  // Client-side filtering and pagination using useMemo
   // ============================================================================
-  const fetchUsers = useCallback(async () => {
+  const { users, totalPages, totalUsers } = useMemo(() => {
+    // Filter by role first
+    const roleFiltered = allUsers.filter(user => user.userType === activeTab);
+    
+    // Then filter by search term
+    const searchFiltered = roleFiltered.filter(user => {
+      if (!debouncedSearchTerm.trim()) return true;
+      
+      const searchLower = debouncedSearchTerm.toLowerCase();
+      const nameMatch = user.full_name?.toLowerCase().includes(searchLower) || false;
+      const emailMatch = user.email?.toLowerCase().includes(searchLower) || false;
+      const phoneMatch = user.phone?.toString().includes(debouncedSearchTerm) || false;
+      
+      return nameMatch || emailMatch || phoneMatch;
+    });
+
+    // Calculate pagination
+    const totalFiltered = searchFiltered.length;
+    const totalPagesCalc = Math.ceil(totalFiltered / limit);
+    const paginatedUsers = searchFiltered.slice((page - 1) * limit, page * limit);
+
+    return {
+      users: paginatedUsers,
+      totalPages: totalPagesCalc,
+      totalUsers: totalFiltered
+    };
+  }, [allUsers, activeTab, debouncedSearchTerm, page, limit]);
+
+  // ============================================================================
+  // fetchAllUsers - fetch all users at once
+  // ============================================================================
+  const fetchAllUsers = useCallback(async () => {
     // Cancel previous request if it exists
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
-    
     // Create new abort controller for this request
     abortControllerRef.current = new AbortController();
-    
     setLoading(true);
-    
-    // Debug tracking - using functional updates to avoid dependency
-    setApiCallCount(prev => prev + 1);
-    setLastApiCall(new Date().toLocaleTimeString());
-    
-    const url = new URL('https://api.partywalah.in/api/admin/users');
-    url.searchParams.append('page', String(page));
-    url.searchParams.append('limit', String(limit));
-    url.searchParams.append('role', activeTab);
-    if (debouncedSearchTerm) {
-      url.searchParams.append('search', debouncedSearchTerm);
-    }
-
-    console.log(`🚀 API Call:`, url.toString());
 
     try {
-      const response = await fetch(url.toString(), {
+      // Fetch all users without pagination or filtering
+      const response = await fetch('https://api.partywalah.in/api/admin/users?limit=1000', {
         headers: {
-          accept: '*/*',
-          Authorization: `Bearer ${token}`,
+          'accept': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
         signal: abortControllerRef.current.signal
       });
@@ -178,71 +145,45 @@ const Users = () => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: ApiResponse = await response.json();
       
-      console.log('📥 API Response:', data);
-
       if (data && data.data && Array.isArray(data.data.data)) {
-        const fetchedUsers = data.data.data;
-        console.log(`✅ Setting ${fetchedUsers.length} users for role: ${activeTab}, page: ${page}`);
-        
-        // CRITICAL: Always replace the entire users array
-        setUsers(fetchedUsers);
-        setTotalPages(data.data.totalPages || 1);
-        
-        console.log('📊 Users set successfully:', fetchedUsers.map(u => ({ id: u._id.slice(-6), name: u.full_name })));
+        setAllUsers(data.data.data);
       } else {
-        console.log('⚠️ No valid user data in response');
-        setUsers([]);
-        setTotalPages(1);
+        setAllUsers([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       if (error.name === 'AbortError') {
-        console.log('🚫 Request aborted');
+        console.log('Request aborted');
         return; // Don't update state for aborted requests
       }
-      
-      console.error("❌ Failed to fetch users:", error);
-      setUsers([]);
-      setTotalPages(1);
+      console.error("Failed to fetch users:", error);
+      setAllUsers([]);
     } finally {
       setLoading(false);
     }
-  }, [token, page, limit, activeTab, debouncedSearchTerm]); // REMOVED apiCallCount from dependencies
+  }, [token]);
 
   // ============================================================================
-  // Effects with proper cleanup and debouncing
+  // Effects
   // ============================================================================
-  
-  // Reset page and clear users when tab or search changes
+
+  // Reset page when tab or search changes
   useEffect(() => {
-    console.log('🔄 Tab or search changed, resetting page and clearing users');
     setPage(1);
-    setUsers([]); // Clear users immediately
-    setLoading(true); // Show loading state
   }, [debouncedSearchTerm, activeTab]);
 
-  // Fetch users when dependencies change
+  // Fetch all users on component mount
   useEffect(() => {
-    console.log('⚡ Triggering fetchUsers due to dependency change');
-    fetchUsers();
-    
-    // Cleanup function
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, [fetchUsers]);
+    fetchAllUsers();
 
-  // Cleanup on unmount
-  useEffect(() => {
+    // Cleanup function to abort fetch on component unmount
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
     };
-  }, []);
+  }, [fetchAllUsers]);
 
   // ============================================================================
   // Helper functions
@@ -259,10 +200,13 @@ const Users = () => {
     try {
       const response = await fetch(`https://api.partywalah.in/api/admin/users/${userId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
       if (response.ok) {
-        setUsers(prevUsers => prevUsers.filter(u => u._id !== userId));
+        setAllUsers(prevUsers => prevUsers.filter(u => u._id !== userId));
         alert('User deleted successfully.');
       } else {
         alert('Failed to delete user.');
@@ -281,15 +225,15 @@ const Users = () => {
     try {
       const response = await fetch(`https://api.partywalah.in/api/admin/users/${userId}`, {
         method: 'PATCH',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}` 
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ isBlocked: !isCurrentlyBlocked })
       });
 
       if (response.ok) {
-        setUsers(prevUsers => prevUsers.map(u => 
+        setAllUsers(prevUsers => prevUsers.map(u => 
           u._id === userId ? { ...u, isBlocked: !isCurrentlyBlocked } : u
         ));
         alert(`User ${action}ed successfully.`);
@@ -305,76 +249,65 @@ const Users = () => {
   // ============================================================================
   // Render
   // ============================================================================
-  console.log('🔍 Current render state:', { 
-    loading, 
-    usersLength: users.length, 
-    activeTab, 
-    page,
-    searchTerm,
-    debouncedSearchTerm 
-  });
-
   return (
     <DashboardLayout>
       <div className="p-4 sm:p-8 space-y-6">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold">User Management</h1>
-            <p className="text-gray-500">View, search, and manage all users.</p>
+            <p className="text-gray-500">
+              View, search, and manage all users. 
+              {totalUsers > 0 && (
+                <span className="ml-2 text-sm font-medium">
+                  ({totalUsers} total {activeTab}s found)
+                </span>
+              )}
+            </p>
           </div>
-          
-          {/* Debug Toggle Button */}
-          <Button 
-            variant={showDebug ? "default" : "outline"} 
-            size="sm"
-            onClick={() => setShowDebug(!showDebug)}
-          >
-            <Bug className="h-4 w-4 mr-2" />
-            Debug {showDebug ? 'On' : 'Off'}
-          </Button>
         </div>
-
-        {/* Debug Information */}
-        <DebugInfo 
-          activeTab={activeTab}
-          searchTerm={searchTerm}
-          debouncedSearchTerm={debouncedSearchTerm}
-          page={page}
-          loading={loading}
-          users={users}
-          totalPages={totalPages}
-          apiCallCount={apiCallCount}
-          lastApiCall={lastApiCall}
-          showDebug={showDebug}
-        />
 
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList>
-                  {roleTabs.map(tab => (
-                    <TabsTrigger key={tab.value} value={tab.value}>
-                      {tab.label}
-                    </TabsTrigger>
-                  ))}
+                <TabsList className="grid w-full grid-cols-3">
+                  {roleTabs.map(tab => {
+                    const Icon = tab.icon;
+                    return (
+                      <TabsTrigger key={tab.value} value={tab.value} className="flex items-center gap-2">
+                        <Icon className="h-4 w-4" />
+                        {tab.label}
+                      </TabsTrigger>
+                    );
+                  })}
                 </TabsList>
               </Tabs>
-              <Input
-                placeholder={`Search ${activeTab}s...`}
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="max-w-full sm:max-w-xs"
-              />
+              
+              <div className="relative w-full sm:w-80">
+                <Input
+                  placeholder={`Search ${activeTab}s by name, email, phone...`}
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className="pr-10"
+                />
+                {searchTerm && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-1 top-1 h-6 w-6 p-0"
+                    onClick={() => setSearchTerm('')}
+                  >
+                    ×
+                  </Button>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent>
-            {/* Add a unique key to force re-render when critical state changes */}
-            <Table key={`${activeTab}-${page}-${debouncedSearchTerm}-${users.length}`}>
+            <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[300px]">User</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Joined On</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -384,7 +317,7 @@ const Users = () => {
                 {/* Loading state */}
                 {loading && (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={4} className="h-24 text-center">
                       <div className="flex items-center justify-center gap-2">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
                         Loading users...
@@ -396,15 +329,29 @@ const Users = () => {
                 {/* No users state */}
                 {!loading && users.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center text-gray-500">
-                      No users found for "{activeTab}" {debouncedSearchTerm && `matching "${debouncedSearchTerm}"`}
+                    <TableCell colSpan={4} className="h-24 text-center text-gray-500">
+                      <div className="space-y-2">
+                        <div>No {activeTab}s found</div>
+                        {debouncedSearchTerm && (
+                          <div className="text-sm">matching "{debouncedSearchTerm}"</div>
+                        )}
+                        {debouncedSearchTerm && (
+                          <Button 
+                            variant="link" 
+                            size="sm"
+                            onClick={() => setSearchTerm('')}
+                          >
+                            Clear search
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 )}
 
                 {/* Users data */}
-                {!loading && users.length > 0 && users.map((user, index) => (
-                  <TableRow key={`${user._id}-${index}`}>
+                {!loading && users.length > 0 && users.map((user) => (
+                  <TableRow key={user._id}>
                     <TableCell>
                       <div className="flex items-center gap-4">
                         <Avatar>
@@ -414,23 +361,13 @@ const Users = () => {
                         <div>
                           <div className="font-medium">{user.full_name || 'N/A'}</div>
                           <div className="text-sm text-gray-500">{user.email || 'No email'}</div>
-                          {showDebug && <div className="text-xs text-blue-500">ID: {user._id.slice(-6)}</div>}
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      {user.isBlocked ? (
-                        <Badge variant="secondary">Blocked</Badge>
-                      ) : user.isProfileComplete ? (
-                        <Badge variant="default">Complete</Badge>
-                      ) : (
-                        <Badge variant="destructive">Incomplete</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>{user.phone}</TableCell>
+                    <TableCell>{user.phone || 'N/A'}</TableCell>
                     <TableCell>
                       {new Date(user.createdAt).toLocaleDateString('en-US', {
-                        year: 'numeric', month: 'long', day: 'numeric',
+                        year: 'numeric', month: 'short', day: 'numeric',
                       })}
                     </TableCell>
                     <TableCell className="text-right">
@@ -452,7 +389,10 @@ const Users = () => {
                             <span>{user.isBlocked ? 'Unblock' : 'Block'}</span>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600 focus:text-red-500" onClick={() => handleDeleteUser(user._id)}>
+                          <DropdownMenuItem 
+                            className="text-red-600 focus:text-red-500" 
+                            onClick={() => handleDeleteUser(user._id)}
+                          >
                             <Trash2 className="mr-2 h-4 w-4" />
                             <span>Delete</span>
                           </DropdownMenuItem>
@@ -464,9 +404,13 @@ const Users = () => {
               </TableBody>
             </Table>
 
-            {/* Pagination */}
             {totalPages > 1 && !loading && (
-              <div className="mt-4 flex justify-center">
+              <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="text-sm text-gray-500">
+                  Showing {users.length} of {totalUsers} {activeTab}s
+                  {debouncedSearchTerm && ` matching "${debouncedSearchTerm}"`}
+                </div>
+                
                 <Pagination>
                   <PaginationContent>
                     <PaginationItem>
@@ -474,37 +418,53 @@ const Users = () => {
                         href="#" 
                         onClick={(e) => { 
                           e.preventDefault(); 
-                          setPage(p => Math.max(1, p - 1)); 
+                          if (page > 1) setPage(p => p - 1); 
                         }} 
-                        className={page === 1 ? 'pointer-events-none opacity-50' : ''} 
+                        className={page === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'} 
                       />
                     </PaginationItem>
                     
-                    <PaginationItem>
-                      <PaginationLink isActive>
-                        {page} of {totalPages}
-                      </PaginationLink>
-                    </PaginationItem>
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (page <= 3) {
+                        pageNum = i + 1;
+                      } else if (page >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = page - 2 + i;
+                      }
+                      
+                      return (
+                        <PaginationItem key={pageNum}>
+                          <PaginationLink 
+                            href="#"
+                            isActive={pageNum === page}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setPage(pageNum);
+                            }}
+                            className="cursor-pointer"
+                          >
+                            {pageNum}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    })}
 
                     <PaginationItem>
                       <PaginationNext 
                         href="#" 
                         onClick={(e) => { 
                           e.preventDefault(); 
-                          setPage(p => Math.min(totalPages, p + 1)); 
+                          if (page < totalPages) setPage(p => p + 1); 
                         }} 
-                        className={page === totalPages ? 'pointer-events-none opacity-50' : ''} 
+                        className={page === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'} 
                       />
                     </PaginationItem>
                   </PaginationContent>
                 </Pagination>
-              </div>
-            )}
-            
-            {/* Debug info in footer */}
-            {showDebug && (
-              <div className="mt-4 text-xs text-gray-500 text-center">
-                Showing {users.length} of {totalPages * limit} total users
               </div>
             )}
           </CardContent>
