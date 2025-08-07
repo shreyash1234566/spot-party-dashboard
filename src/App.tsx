@@ -37,7 +37,7 @@ import FaqView from "./pages/FaqView.tsx";
 import FaqEdit from "./pages/FaqEdit.tsx";
 import DescriptionCreate from "./pages/DescriptionCreate.tsx";
 import DescriptionList from "./pages/DescriptionList.tsx";
-import DescriptionView from "./pages/DesciptionView.tsx"; // Fixed typo: DesceiptionView -> DescriptionView
+import DescriptionView from "./pages/DesciptionView.tsx"; 
 import DescriptionEdit from "./pages/DescriptionEdit.tsx";
 import CarouselCreate from "./pages/CarouselCreate.tsx";
 import CarouselList from "./pages/CarouselList.tsx";

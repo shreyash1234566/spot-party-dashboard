@@ -65,7 +65,7 @@ const DescriptionList = () => {
   const handleDelete = async (DescriptionId: string) => {
     if (window.confirm('Are you sure you want to delete this Description?')) {
       try {
-        const res = await fetch(`https://api.partywalah.in/api/admin/Description/${DescriptionId}`, {
+        const res = await fetch(`https://6891d3e7447ff4f11fbdec9e.mockapi.io/api/party/${DescriptionId}`, {
           method: 'DELETE',
           headers: { 'accept': '*/*', 'Authorization': `Bearer ${token}` }
         });

@@ -36,7 +36,7 @@ const DescriptionView = () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`https://api.partywalah.in/api/admin/Description/${id}`, {
+        const response = await fetch(`https://6891d3e7447ff4f11fbdec9e.mockapi.io/api/party/Description/${id}`, {
           headers: {
             'accept': 'application/json',
             'Authorization': `Bearer ${token}`
