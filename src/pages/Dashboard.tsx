@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Users,
   Calendar,
@@ -81,7 +81,7 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        // Fetch data from actual APIs like in the second code
+        // Fetch data from actual APIs
         const [usersRes, eventsRes] = await Promise.all([
           fetch('https://api.partywalah.in/api/admin/users', { 
             headers: { 'Authorization': `Bearer ${token}` } 
@@ -111,50 +111,8 @@ const Dashboard = () => {
 
       } catch (err) {
         console.error('Dashboard Error:', err);
-        
-        // Fallback to demo data if API fails (for demonstration purposes)
-        setStats({
-          totalUsers: 1247,
-          totalEvents: 23,
-        });
-
-        setRecentEvents([
-          {
-            _id: '1',
-            title: 'Annual Tech Conference 2024',
-            startDate: '2024-12-15T10:00:00Z',
-            status: 'approved',
-            venue: 'Convention Center, Mumbai'
-          },
-          {
-            _id: '2',
-            title: 'Christmas Celebration',
-            startDate: '2024-12-25T18:00:00Z',
-            status: 'pending',
-            venue: 'Grand Hotel, Delhi'
-          },
-          {
-            _id: '3',
-            title: 'New Year Party',
-            startDate: '2024-12-31T21:00:00Z',
-            status: 'published',
-            venue: 'Beach Resort, Goa'
-          },
-          {
-            _id: '4',
-            title: 'Corporate Workshop',
-            startDate: '2024-11-20T09:00:00Z',
-            status: 'cancelled',
-            venue: 'Office Complex, Bangalore'
-          },
-          {
-            _id: '5',
-            title: 'Music Festival',
-            startDate: '2024-11-30T16:00:00Z',
-            status: 'approved',
-            venue: 'Open Ground, Pune'
-          }
-        ]);
+        // If API fails, stats will remain 0 and recentEvents will be empty.
+        // The UI will show loading spinners or "No data" messages.
       } finally {
         setLoading(false);
       }
@@ -164,7 +122,7 @@ const Dashboard = () => {
   }, [token]);
 
   const getStatusBadge = (status: string) => {
-    const s = status?.toLowerCase() || 'unknown';
+    const s = status?.toLowerCase() || 'events';
     const styles = {
       approved: 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm',
       published: 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm',
@@ -176,7 +134,7 @@ const Dashboard = () => {
   };
 
   const getStatusIcon = (status: string) => {
-    const s = status?.toLowerCase() || 'unknown';
+    const s = status?.toLowerCase() || 'events';
     switch (s) {
       case 'approved':
       case 'published':
@@ -253,7 +211,7 @@ const Dashboard = () => {
           <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg group-hover:shadow-xl transition-shadow">
             <BellPlus className="w-6 h-6 text-white group-hover:scale-110 transition-transform" />
           </div>
-          <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+          
         </div>
         <p className="font-semibold text-slate-800 mb-1">New Notification</p>
         <p className="text-sm text-slate-600">Send instant alerts</p>
@@ -367,7 +325,7 @@ const Dashboard = () => {
                         </div>
                         <div className="flex items-center space-x-3">
                           <div className={`capitalize font-semibold px-3 py-1 rounded-full border ${getStatusBadge(event.status)}`}>
-                            {event.status || 'unknown'}
+                            {event.status || 'events'}
                           </div>
                           <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-purple-500 group-hover:translate-x-1 transition-all" />
                         </div>
